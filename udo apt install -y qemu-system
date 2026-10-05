@@ -1,0 +1,120 @@
+[32mpython3-kiwi-boxed-plugin[0m/resolute 0.2.31-1build1 all
+  KIWI plugin to provide self contained build support
+
+[32mpython3-qemu-qmp[0m/resolute 0.0.5-2 all
+  QEMU Monitor Protocol Library
+
+[32mqemu-block-extra[0m/resolute-updates,now 1:10.2.1+ds-1ubuntu3.2 amd64 [installed,automatic]
+  extra block backend modules for qemu-system and qemu-utils
+
+[32mqemu-block-extra-hwe[0m/resolute-updates 1:10.2.1+ds-1ubuntu4.3 amd64
+  extra block backend modules for qemu-system and qemu-utils
+
+[32mqemu-block-supplemental[0m/resolute-updates 1:10.2.1+ds-1ubuntu3.2 amd64
+  supplemental block backend modules for qemu-system and qemu-utils
+
+[32mqemu-block-supplemental-hwe[0m/resolute-updates 1:10.2.1+ds-1ubuntu4.3 amd64
+  supplemental block backend modules for qemu-system and qemu-utils
+
+[32mqemu-guest-agent[0m/resolute-updates 1:10.2.1+ds-1ubuntu3.2 amd64
+  Guest-side qemu-system agent
+
+[32mqemu-guest-agent-hwe[0m/resolute-updates 1:10.2.1+ds-1ubuntu4.3 amd64
+  Guest-side qemu-system agent
+
+[32mqemu-system[0m/resolute-updates 1:10.2.1+ds-1ubuntu3.2 amd64
+  QEMU full system emulation binaries
+
+[32mqemu-system-arm[0m/resolute-updates 1:10.2.1+ds-1ubuntu3.2 amd64
+  QEMU full system emulation binaries (arm)
+
+[32mqemu-system-arm-hwe[0m/resolute-updates 1:10.2.1+ds-1ubuntu4.3 amd64
+  QEMU full system emulation binaries (arm)
+
+[32mqemu-system-common[0m/resolute-updates,now 1:10.2.1+ds-1ubuntu3.2 amd64 [installed,automatic]
+  QEMU full system emulation binaries (common files)
+
+[32mqemu-system-common-hwe[0m/resolute-updates 1:10.2.1+ds-1ubuntu4.3 amd64
+  QEMU full system emulation binaries (common files)
+
+[32mqemu-system-data[0m/resolute-updates,now 1:10.2.1+ds-1ubuntu3.2 all [installed,automatic]
+  QEMU full system emulation (data files)
+
+[32mqemu-system-data-hwe[0m/resolute-updates 1:10.2.1+ds-1ubuntu4.3 all
+  QEMU full system emulation (data files)
+
+[32mqemu-system-gui[0m/resolute-updates,now 1:10.2.1+ds-1ubuntu3.2 amd64 [installed,automatic]
+  QEMU full system emulation binaries (graphical display and audio modules)
+
+[32mqemu-system-gui-hwe[0m/resolute-updates 1:10.2.1+ds-1ubuntu4.3 amd64
+  QEMU full system emulation binaries (graphical display and audio modules)
+
+[32mqemu-system-hwe[0m/resolute-updates 1:10.2.1+ds-1ubuntu4.3 amd64
+  QEMU full system emulation binaries
+
+[32mqemu-system-mips[0m/resolute-updates 1:10.2.1+ds-1ubuntu3.2 amd64
+  QEMU full system emulation binaries (mips)
+
+[32mqemu-system-mips-hwe[0m/resolute-updates 1:10.2.1+ds-1ubuntu4.3 amd64
+  QEMU full system emulation binaries (mips)
+
+[32mqemu-system-misc[0m/resolute-updates,now 1:10.2.1+ds-1ubuntu3.2 amd64 [installed]
+  QEMU full system emulation binaries (miscellaneous)
+
+[32mqemu-system-misc-hwe[0m/resolute-updates 1:10.2.1+ds-1ubuntu4.3 amd64
+  QEMU full system emulation binaries (miscellaneous)
+
+[32mqemu-system-modules-opengl[0m/resolute-updates,now 1:10.2.1+ds-1ubuntu3.2 amd64 [installed,automatic]
+  QEMU full system emulation binaries (OpenGL display modules)
+
+[32mqemu-system-modules-opengl-hwe[0m/resolute-updates 1:10.2.1+ds-1ubuntu4.3 amd64
+  QEMU full system emulation binaries (OpenGL display modules)
+
+[32mqemu-system-modules-spice[0m/resolute-updates,now 1:10.2.1+ds-1ubuntu3.2 amd64 [installed,automatic]
+  QEMU full system emulation binaries (spice display modules)
+
+[32mqemu-system-modules-spice-hwe[0m/resolute-updates 1:10.2.1+ds-1ubuntu4.3 amd64
+  QEMU full system emulation binaries (spice display modules)
+
+[32mqemu-system-ppc[0m/resolute-updates 1:10.2.1+ds-1ubuntu3.2 amd64
+  QEMU full system emulation binaries (ppc)
+
+[32mqemu-system-ppc-hwe[0m/resolute-updates 1:10.2.1+ds-1ubuntu4.3 amd64
+  QEMU full system emulation binaries (ppc)
+
+[32mqemu-system-riscv[0m/resolute-updates 1:10.2.1+ds-1ubuntu3.2 amd64
+  QEMU full system emulation binaries (riscv)
+
+[32mqemu-system-riscv-hwe[0m/resolute-updates 1:10.2.1+ds-1ubuntu4.3 amd64
+  QEMU full system emulation binaries (riscv)
+
+[32mqemu-system-s390x[0m/resolute-updates 1:10.2.1+ds-1ubuntu3.2 amd64
+  QEMU full system emulation binaries (s390x)
+
+[32mqemu-system-s390x-hwe[0m/resolute-updates 1:10.2.1+ds-1ubuntu4.3 amd64
+  QEMU full system emulation binaries (s390x)
+
+[32mqemu-system-sparc[0m/resolute-updates 1:10.2.1+ds-1ubuntu3.2 amd64
+  QEMU full system emulation binaries (sparc)
+
+[32mqemu-system-sparc-hwe[0m/resolute-updates 1:10.2.1+ds-1ubuntu4.3 amd64
+  QEMU full system emulation binaries (sparc)
+
+[32mqemu-system-x86[0m/resolute-updates 1:10.2.1+ds-1ubuntu3.2 amd64
+  QEMU full system emulation binaries (x86)
+
+[32mqemu-system-x86-hwe[0m/resolute-updates 1:10.2.1+ds-1ubuntu4.3 amd64
+  QEMU full system emulation binaries (x86)
+
+[32mqemu-system-x86-xen[0m/resolute-updates 1:10.2.1+ds-1ubuntu3.2 amd64
+  QEMU full system emulation binaries (x86)
+
+[32mqemu-system-x86-xen-hwe[0m/resolute-updates 1:10.2.1+ds-1ubuntu4.3 amd64
+  QEMU full system emulation binaries (x86)
+
+[32mqemu-system-xen[0m/resolute-updates 1:10.2.1+ds-1ubuntu3.2 amd64
+  QEMU full system emulation (Xen helper package)
+
+[32mqemu-system-xen-hwe[0m/resolute-updates 1:10.2.1+ds-1ubuntu4.3 amd64
+  QEMU full system emulation (Xen helper package)
+

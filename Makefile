@@ -150,6 +150,11 @@ UPROGS=\
 	$U/_forphan\
 	$U/_dorphan\
 	$U/_sync\
+	$U/_ps\
+	$U/_setpriority\
+	$U/_cpuburn\
+	$U/_cowtest\
+	$U/_mmaptest\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)
