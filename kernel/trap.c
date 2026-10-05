@@ -68,11 +68,18 @@ usertrap(void)
     syscall();
   } else if ((which_dev = devintr()) != 0) {
     // ok
-  } else if ((r_scause() == 15 || r_scause() == 13) &&
-             vmfault(p->pagetable, p->sz, r_stval(),
+  } else if (r_scause() == 15 &&
+           cowalloc(p->pagetable, r_stval()) != 0) {
+  // COW page fault handled
+} else if ((r_scause() == 15 || r_scause() == 13) &&
+           mmapfault(p->pagetable, r_stval(),
                      (r_scause() == 13) ? 1 : 0) != 0) {
-    // page fault on lazily-allocated page
-  } else {
+  // page fault on mmap region
+} else if ((r_scause() == 15 || r_scause() == 13) &&
+           vmfault(p->pagetable, p->sz, r_stval(),
+                   (r_scause() == 13) ? 1 : 0) != 0) {
+  // page fault on lazily-allocated heap memory
+} else {
     printk("usertrap(): unexpected scause 0x%lx pid=%d\n", r_scause(), p->pid);
     printk("            sepc=0x%lx stval=0x%lx\n", r_sepc(), r_stval());
     setkilled(p);
@@ -81,9 +88,11 @@ usertrap(void)
   if (killed(p))
     kexit(-1);
 
-  // give up the CPU if this is a timer interrupt.
-  if (which_dev == 2)
-    yield();
+// give up the CPU if this is a timer interrupt.
+if (which_dev == 2){
+  p->cpu_time++;
+  yield();
+}
 
   prepare_return();
 
@@ -153,10 +162,11 @@ kerneltrap()
     panic("kerneltrap");
   }
 
-  // give up the CPU if this is a timer interrupt.
-  if (which_dev == 2 && myproc() != 0)
-    yield();
-
+// give up the CPU if this is a timer interrupt.
+if (which_dev == 2 && myproc() != 0){
+  myproc()->cpu_time++;
+  yield();
+}
   // the yield() may have caused some traps to occur,
   // so restore trap registers for use by kernelvec.S's sepc instruction.
   w_sepc(sepc);

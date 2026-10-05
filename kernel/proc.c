@@ -123,6 +123,10 @@ allocproc(void)
 
 found:
   p->pid = allocpid();
+  p->priority = 10;
+  p->cpu_time = 0;
+  for(int i = 0; i < NVMA; i++)
+  memset(&p->vmas[i], 0, sizeof(p->vmas[i]));
   p->state = USED;
 
   // Allocate a trapframe page.
@@ -275,6 +279,13 @@ kfork(void)
   }
   np->sz = p->sz;
 
+  for(i = 0; i < NVMA; i++){
+  if(p->vmas[i].used){
+    np->vmas[i] = p->vmas[i];
+    np->vmas[i].file = filedup(p->vmas[i].file);
+  }
+}
+
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
 
@@ -329,6 +340,8 @@ kexit(int status)
 
   if (p == initproc)
     panic("init exiting");
+
+  mmap_cleanup(p);
 
   // Close all open files.
   for (int fd = 0; fd < NOFILE; fd++) {
@@ -429,42 +442,41 @@ void
 scheduler(void)
 {
   struct proc *p;
+  struct proc *best;
   struct cpu *c = mycpu();
 
   c->proc = 0;
-  for (;;) {
-    // The most recent process to run may have had interrupts
-    // turned off; enable them to avoid a deadlock if all
-    // processes are waiting. Then turn them back off
-    // to avoid a possible race between an interrupt
-    // and wfi.
+
+  for(;;){
     intr_on();
-    intr_off();
 
-    int found = 0;
-    for (p = proc; p < &proc[NPROC]; p++) {
+    best = 0;
+
+    for(p = proc; p < &proc[NPROC]; p++){
       acquire(&p->lock);
-      if (p->state == RUNNABLE) {
-        // Switch to chosen process.  It is the process's job
-        // to release its lock and then reacquire it
-        // before jumping back to us.
-        p->state = RUNNING;
-        c->proc = p;
-        swtch(&c->context, &p->context);
 
-        // Don't re-enable interrupts on release.
-        mycpu()->intena = 0;
+      if(p->state == RUNNABLE){
+        if(best == 0 || p->priority < best->priority){
+          if(best != 0)
+            release(&best->lock);
 
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
-        c->proc = 0;
-        found = 1;
+          best = p;
+        } else {
+          release(&p->lock);
+        }
+      } else {
+        release(&p->lock);
       }
-      release(&p->lock);
     }
-    if (found == 0) {
-      // nothing to run; stop running on this core until an interrupt.
-      asm volatile("wfi");
+
+    if(best != 0){
+      best->state = RUNNING;
+      c->proc = best;
+
+      swtch(&c->context, &best->context);
+
+      c->proc = 0;
+      release(&best->lock);
     }
   }
 }
@@ -697,7 +709,32 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
-    printk("%d %s %s", p->pid, state, p->name);
+    printk("%d\t%d\t%lu\t%s\t%s",
+       p->pid,
+       p->priority,
+       p->cpu_time,
+       state,
+       p->name);
     printk("\n");
   }
+}
+
+int
+setpriority(int pid, int priority)
+{
+  struct proc *p;
+
+  for(p = proc; p < &proc[NPROC]; p++){
+    acquire(&p->lock);
+
+    if(p->pid == pid){
+      p->priority = priority;
+      release(&p->lock);
+      return 0;
+    }
+
+    release(&p->lock);
+  }
+
+  return -1;
 }

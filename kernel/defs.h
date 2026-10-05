@@ -59,6 +59,9 @@ void            ireclaim(int);
 // kalloc.c
 void*           kalloc(void);
 void            kfree(void *);
+void            incref(void *);
+int             getref(void *);
+void            decref(void *);
 void            kinit(void);
 
 // log.c
@@ -103,6 +106,7 @@ void            yield(void);
 int             either_copyout(int user_dst, uint64 dst, void *src, uint64 len);
 int             either_copyin(void *dst, int user_src, uint64 src, uint64 len);
 void            procdump(void);
+int             setpriority(int, int);
 
 // swtch.S
 void            swtch(struct context*, struct context*);
@@ -133,6 +137,7 @@ char*           strncpy(char*, const char*, int);
 // syscall.c
 void            argint(int, int*);
 int             argstr(int, char*, int);
+uint64          mmap_find_addr(struct proc *, uint64);
 void            argaddr(int, uint64 *);
 int             fetchstr(uint64, char*, int);
 int             fetchaddr(uint64, uint64*);
@@ -170,6 +175,10 @@ int             copyin(pagetable_t, uint64, char *, uint64, uint64);
 int             copyinstr(pagetable_t, uint64, char *, uint64, uint64);
 int             ismapped(pagetable_t, uint64);
 uint64          vmfault(pagetable_t, uint64, uint64, int);
+uint64          cowalloc(pagetable_t, uint64);
+uint64          mmapfault(pagetable_t, uint64, int);
+int             mmap_unmap(struct proc *, uint64, uint64);
+void            mmap_cleanup(struct proc *);
 
 // plic.c
 void            plicinit(void);

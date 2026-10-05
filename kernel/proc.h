@@ -78,6 +78,21 @@ struct trapframe {
 
 enum procstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
+
+#define NVMA 16
+
+struct vma {
+  int used;                 // 1 if this VMA is in use
+  uint64 addr;              // Starting virtual address
+  uint64 length;            // Length of the mapping
+  uint64 maplen;            // Page-rounded length
+  int prot;                 // Protection flags
+  int flags;                // MAP_SHARED / MAP_PRIVATE
+  struct file *file;        // Backing file
+  uint64 offset;            // Offset within the file
+};
+
+
 // Per-process state
 struct proc {
   struct spinlock lock;
@@ -88,6 +103,8 @@ struct proc {
   int killed;           // If non-zero, have been killed
   int xstate;           // Exit status to be returned to parent's wait
   int pid;              // Process ID
+  int priority;         // Scheduling priority
+  uint64 cpu_time;      // CPU time used by the process
 
   // wait_lock must be held when using this:
   struct proc *parent; // Parent process
@@ -100,5 +117,6 @@ struct proc {
   struct context context;      // swtch() here to run process
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
+  struct vma vmas[NVMA];     // Memory-mapped regions
   char name[16];               // Process name (debugging)
 };

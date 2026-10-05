@@ -1,12 +1,14 @@
-#include "param.h"
 #include "types.h"
+#include "param.h"
 #include "memlayout.h"
 #include "elf.h"
 #include "riscv.h"
 #include "defs.h"
 #include "spinlock.h"
+#include "sleeplock.h"
 #include "proc.h"
 #include "fs.h"
+#include "file.h"
 
 /*
  * the kernel's page table.
@@ -301,23 +303,32 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   pte_t *pte;
   uint64 pa, i;
   uint flags;
-  char *mem;
 
-  for (i = 0; i < sz; i += PGSIZE) {
-    if ((pte = walk(old, i, 0)) == 0)
+  for(i = 0; i < sz; i += PGSIZE){
+    if((pte = walk(old, i, 0)) == 0)
       continue; // page table entry hasn't been allocated
-    if ((*pte & PTE_V) == 0)
+    if((*pte & PTE_V) == 0)
       continue; // physical page hasn't been allocated
+
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
-    if ((mem = kalloc()) == 0)
-      goto err;
-    memmove(mem, (char *)pa, PGSIZE);
-    if (mappages(new, i, PGSIZE, (uint64)mem, flags) != 0) {
-      kfree(mem);
+
+    // If the page was writable, make it read-only
+    // and mark it as Copy-on-Write.
+    if(flags & PTE_W){
+      flags = (flags & ~PTE_W) | PTE_COW;
+      *pte = (*pte & ~PTE_W) | PTE_COW;
+    }
+
+    // Parent and child now share the same physical page.
+    incref((void*)pa);
+
+    if(mappages(new, i, PGSIZE, pa, flags) != 0){
+      decref((void*)pa);
       goto err;
     }
   }
+
   return 0;
 
 err:
@@ -354,28 +365,45 @@ copyout(pagetable_t pagetable, uint64 psz, uint64 dstva, char *src, uint64 len)
 
     pa0 = walkaddr(pagetable, va0);
     if (pa0 == 0) {
-      if ((pa0 = vmfault(pagetable, psz, va0, 0)) == 0) {
-        return -1;
-      }
-    }
+    pa0 = vmfault(pagetable, psz, va0, 0);
+
+    if(pa0 == 0)
+    pa0 = mmapfault(pagetable, va0, 0);
+
+    if(pa0 == 0)
+    return -1;
+}
 
     pte = walk(pagetable, va0, 0);
-    // forbid copyout over read-only user text pages.
+    if (pte == 0 || (*pte & PTE_V) == 0)
+      return -1;
+
+    // If this is a COW page, create a private writable copy.
+    if (*pte & PTE_COW) {
+      pa0 = cowalloc(pagetable, va0);
+      if (pa0 == 0)
+        return -1;
+
+      pte = walk(pagetable, va0, 0);
+    }
+
+    // Forbid copyout over read-only user text pages.
     if ((*pte & PTE_W) == 0)
       return -1;
 
     n = PGSIZE - (dstva - va0);
     if (n > len)
       n = len;
+
     memmove((void *)(pa0 + (dstva - va0)), src, n);
 
     len -= n;
     src += n;
     dstva = va0 + PGSIZE;
   }
+
   return 0;
 }
-
 // Copy from user to kernel.
 // Copy len bytes to dst from virtual address srcva in a given page table.
 // Return 0 on success, -1 on error.
@@ -388,10 +416,14 @@ copyin(pagetable_t pagetable, uint64 psz, char *dst, uint64 srcva, uint64 len)
     va0 = PGROUNDDOWN(srcva);
     pa0 = walkaddr(pagetable, va0);
     if (pa0 == 0) {
-      if ((pa0 = vmfault(pagetable, psz, va0, 1)) == 0) {
-        return -1;
-      }
-    }
+  pa0 = vmfault(pagetable, psz, va0, 1);
+
+  if(pa0 == 0)
+    pa0 = mmapfault(pagetable, va0, 1);
+
+  if(pa0 == 0)
+    return -1;
+}
     n = PGSIZE - (srcva - va0);
     if (n > len)
       n = len;
@@ -488,4 +520,210 @@ ismapped(pagetable_t pagetable, uint64 va)
     return 1;
   }
   return 0;
+}
+
+
+uint64
+cowalloc(pagetable_t pagetable, uint64 va)
+{
+  pte_t *pte;
+  uint64 pa;
+  uint flags;
+  char *mem;
+
+  if(va >= MAXVA)
+    return 0;
+
+  va = PGROUNDDOWN(va);
+
+  if((pte = walk(pagetable, va, 0)) == 0)
+    return 0;
+
+  if((*pte & PTE_V) == 0)
+    return 0;
+
+  if((*pte & PTE_COW) == 0)
+    return 0;
+
+  pa = PTE2PA(*pte);
+  flags = PTE_FLAGS(*pte);
+
+  // If this is the only reference, we don't need to copy.
+  if(getref((void*)pa) == 1){
+    *pte = PA2PTE(pa) | ((flags | PTE_W) & ~PTE_COW);
+    return pa;
+  }
+
+  // More than one process is sharing the page.
+  mem = kalloc();
+  if(mem == 0)
+    return 0;
+
+  memmove(mem, (char*)pa, PGSIZE);
+
+  flags = (flags | PTE_W) & ~PTE_COW;
+  *pte = PA2PTE((uint64)mem) | flags;
+
+  decref((void*)pa);
+
+  return (uint64)mem;
+}
+
+
+uint64
+mmapfault(pagetable_t pagetable, uint64 va, int read)
+{
+  struct proc *p = myproc();
+  struct vma *vma;
+  uint64 mem;
+  uint64 offset;
+  int perm;
+  int n;
+
+  va = PGROUNDDOWN(va);
+
+  for(int i = 0; i < NVMA; i++){
+    vma = &p->vmas[i];
+
+    if(vma->used == 0)
+      continue;
+
+    if(va >= vma->addr && va < vma->addr + vma->maplen){
+      if(read && !(vma->prot & PROT_READ))
+        return 0;
+
+      if(!read && !(vma->prot & PROT_WRITE))
+        return 0;
+
+      if(ismapped(pagetable, va))
+        return walkaddr(pagetable, va);
+
+      mem = (uint64)kalloc();
+      if(mem == 0)
+        return 0;
+
+      memset((void *)mem, 0, PGSIZE);
+
+      offset = vma->offset + (va - vma->addr);
+
+      ilock(vma->file->ip);
+      n = readi(vma->file->ip, 0, mem, offset, PGSIZE);
+      iunlock(vma->file->ip);
+
+      if(n < 0){
+        kfree((void *)mem);
+        return 0;
+      }
+
+      perm = PTE_U;
+
+      if(vma->prot & PROT_READ)
+        perm |= PTE_R;
+
+      if(vma->prot & PROT_WRITE)
+        perm |= PTE_W;
+
+      if(mappages(pagetable, va, PGSIZE, mem, perm) != 0){
+        kfree((void *)mem);
+        return 0;
+      }
+
+      return mem;
+    }
+  }
+
+  return 0;
+}
+
+
+
+int
+mmap_unmap(struct proc *p, uint64 addr, uint64 length)
+{
+  struct vma *vma = 0;
+  uint64 end;
+  uint64 a;
+  uint64 pa;
+  pte_t *pte;
+
+  length = PGROUNDUP(length);
+
+  for(int i = 0; i < NVMA; i++){
+    if(p->vmas[i].used &&
+       addr >= p->vmas[i].addr &&
+       addr < p->vmas[i].addr + p->vmas[i].maplen){
+      vma = &p->vmas[i];
+      break;
+    }
+  }
+
+  if(vma == 0)
+    return -1;
+
+  end = addr + length;
+
+  if(addr != vma->addr &&
+     end != vma->addr + vma->maplen)
+    return -1;
+
+  for(a = addr; a < end; a += PGSIZE){
+    pte = walk(p->pagetable, a, 0);
+
+    if(pte == 0 || (*pte & PTE_V) == 0)
+      continue;
+
+    pa = PTE2PA(*pte);
+
+    if(vma->flags == MAP_SHARED){
+      uint64 fileoff = vma->offset + (a - vma->addr);
+      uint64 remaining;
+
+      if(a - vma->addr < vma->length){
+        remaining = vma->length - (a - vma->addr);
+
+        if(remaining > PGSIZE)
+          remaining = PGSIZE;
+
+        begin_op();
+        ilock(vma->file->ip);
+        writei(vma->file->ip, 0, pa, fileoff, remaining);
+        iunlock(vma->file->ip);
+        end_op();
+      }
+    }
+
+    kfree((void *)pa);
+    *pte = 0;
+  }
+
+  if(addr == vma->addr && end == vma->addr + vma->maplen){
+    fileclose(vma->file);
+    memset(vma, 0, sizeof(*vma));
+    return 0;
+  }
+
+  if(addr == vma->addr){
+    vma->addr = end;
+    vma->offset += length;
+    vma->length -= length;
+    vma->maplen -= length;
+    return 0;
+  }
+
+  if(end == vma->addr + vma->maplen){
+    vma->length -= length;
+    vma->maplen -= length;
+    return 0;
+  }
+
+  return -1;
+}
+
+void
+mmap_cleanup(struct proc *p)
+{
+  for(int i = 0; i < NVMA; i++){
+    if(p->vmas[i].used)
+      mmap_unmap(p, p->vmas[i].addr, p->vmas[i].maplen);
+  }
 }
