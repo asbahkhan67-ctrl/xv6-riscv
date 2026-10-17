@@ -574,7 +574,8 @@ The purpose of the project is to explore kernel-level concepts including:
 
 The following diagram provides a high-level view of NexusXv6 and illustrates how the five kernel extensions interact with the existing xv6 architecture. It shows the flow from user-space programs through the system-call and trap layers into process management, virtual memory, physical memory management, and the file system, down to the underlying RISC-V/QEMU environment.
 
-<img width="1791" height="3321" alt="mermaid-diagram" src="https://github.com/user-attachments/assets/3840f5b5-5bac-4c8b-a26a-b397710d2fa4" />
+<img width="1791" height="3321" alt="mermaid-diagram" src="https://github.com/user-attachments/assets/823f0849-63d5-43a1-9f47-69feb656a2bc" />
+
 
 
 
