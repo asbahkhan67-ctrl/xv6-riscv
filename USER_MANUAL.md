@@ -201,6 +201,18 @@ The CPU tick counters can change as processes receive timer-driven CPU time.
 
 The CPU counter is maintained independently for each process.
 
+Another function "cpuburn" can help understand how this work, you can test it using 
+```text
+$ cpuburn &
+```
+Then check its cpu-ticks
+
+```text
+$ ps
+```
+You can close the cpuburn process by Kill ID
+
+
 ---
 
 # 8. Test Copy-on-Write
