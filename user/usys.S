@@ -130,3 +130,58 @@ munmap:
  li a7, SYS_munmap
  ecall
  ret
+.global trace
+trace:
+ li a7, SYS_trace
+ ecall
+ ret
+.global sysinfo
+sysinfo:
+ li a7, SYS_sysinfo
+ ecall
+ ret
+.global getppid
+getppid:
+ li a7, SYS_getppid
+ ecall
+ ret
+.global ptree
+ptree:
+ li a7, SYS_ptree
+ ecall
+ ret
+.global getsyscallcount
+getsyscallcount:
+ li a7, SYS_getsyscallcount
+ ecall
+ ret
+.global waitx
+waitx:
+ li a7, SYS_waitx
+ ecall
+ ret
+.global halt
+halt:
+ li a7, SYS_halt
+ ecall
+ ret
+.global reboot
+reboot:
+ li a7, SYS_reboot
+ ecall
+ ret
+.global sched_yield
+sched_yield:
+ li a7, SYS_sched_yield
+ ecall
+ ret
+.global getcpuid
+getcpuid:
+ li a7, SYS_getcpuid
+ ecall
+ ret
+.global setprocname
+setprocname:
+ li a7, SYS_setprocname
+ ecall
+ ret

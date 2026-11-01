@@ -1,6 +1,7 @@
 #define SBRK_ERROR ((char *)-1)
 
 struct stat;
+struct sysinfo;
 
 // system calls
 int fork(void);
@@ -29,6 +30,17 @@ int ps(void);
 int setpriority(int, int);
 void *mmap(void *, uint64, int, int, int, uint64);
 int munmap(void *, uint64);
+int trace(uint64);
+int sysinfo(struct sysinfo *);
+int getppid(void);
+int ptree(void);
+int getsyscallcount(int);
+int waitx(int *, uint64 *, uint64 *);
+int halt(void);
+int reboot(void);
+int sched_yield(void);
+int getcpuid(void);
+int setprocname(const char *);
 
 // ulib.c
 int stat(const char *, struct stat *);

@@ -71,7 +71,7 @@ argaddr(int n, uint64 *ip)
 
 // Fetch the nth word-sized system call argument as a null-terminated string.
 // Copies into buf, at most max.
-// Returns string length if OK (not including nul), -1 if error.
+// Returns string length if OK (not including nul), -1 for error.
 int
 argstr(int n, char *buf, int max)
 {
@@ -107,36 +107,101 @@ extern uint64 sys_ps(void);
 extern uint64 sys_setpriority(void);
 extern uint64 sys_mmap(void);
 extern uint64 sys_munmap(void);
+extern uint64 sys_trace(void);
+extern uint64 sys_sysinfo(void);
+extern uint64 sys_getppid(void);
+extern uint64 sys_ptree(void);
+extern uint64 sys_getsyscallcount(void);
+extern uint64 sys_waitx(void);
+extern uint64 sys_halt(void);
+extern uint64 sys_reboot(void);
+extern uint64 sys_sched_yield(void);
+extern uint64 sys_getcpuid(void);
+extern uint64 sys_setprocname(void);
+
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
 static uint64 (*syscalls[])(void) = {
   // clang-format off
-  [SYS_fork]    = sys_fork,
-  [SYS_exit]    = sys_exit,
-  [SYS_wait]    = sys_wait,
-  [SYS_pipe]    = sys_pipe,
-  [SYS_read]    = sys_read,
-  [SYS_kill]    = sys_kill,
-  [SYS_exec]    = sys_exec,
-  [SYS_fstat]   = sys_fstat,
-  [SYS_chdir]   = sys_chdir,
-  [SYS_dup]     = sys_dup,
-  [SYS_getpid]  = sys_getpid,
-  [SYS_sbrk]    = sys_sbrk,
-  [SYS_pause]   = sys_pause,
-  [SYS_uptime]  = sys_uptime,
-  [SYS_open]    = sys_open,
-  [SYS_write]   = sys_write,
-  [SYS_mknod]   = sys_mknod,
-  [SYS_unlink]  = sys_unlink,
-  [SYS_link]    = sys_link,
-  [SYS_mkdir]   = sys_mkdir,
-  [SYS_close]   = sys_close,
-  [SYS_sync]    = sys_sync,
-  [SYS_ps] = sys_ps,
-  [SYS_setpriority] = sys_setpriority,
-  [SYS_mmap] = sys_mmap,
-  [SYS_munmap] = sys_munmap,
+  [SYS_fork]            = sys_fork,
+  [SYS_exit]            = sys_exit,
+  [SYS_wait]            = sys_wait,
+  [SYS_pipe]            = sys_pipe,
+  [SYS_read]            = sys_read,
+  [SYS_kill]            = sys_kill,
+  [SYS_exec]            = sys_exec,
+  [SYS_fstat]           = sys_fstat,
+  [SYS_chdir]           = sys_chdir,
+  [SYS_dup]             = sys_dup,
+  [SYS_getpid]          = sys_getpid,
+  [SYS_sbrk]            = sys_sbrk,
+  [SYS_pause]           = sys_pause,
+  [SYS_uptime]          = sys_uptime,
+  [SYS_open]            = sys_open,
+  [SYS_write]           = sys_write,
+  [SYS_mknod]           = sys_mknod,
+  [SYS_unlink]          = sys_unlink,
+  [SYS_link]            = sys_link,
+  [SYS_mkdir]           = sys_mkdir,
+  [SYS_close]           = sys_close,
+  [SYS_sync]            = sys_sync,
+  [SYS_ps]              = sys_ps,
+  [SYS_setpriority]     = sys_setpriority,
+  [SYS_mmap]            = sys_mmap,
+  [SYS_munmap]          = sys_munmap,
+  [SYS_trace]           = sys_trace,
+  [SYS_sysinfo]         = sys_sysinfo,
+  [SYS_getppid]         = sys_getppid,
+  [SYS_ptree]           = sys_ptree,
+  [SYS_getsyscallcount] = sys_getsyscallcount,
+  [SYS_waitx]           = sys_waitx,
+  [SYS_halt]            = sys_halt,
+  [SYS_reboot]          = sys_reboot,
+  [SYS_sched_yield]     = sys_sched_yield,
+  [SYS_getcpuid]        = sys_getcpuid,
+  [SYS_setprocname]     = sys_setprocname,
+  // clang-format on
+};
+
+static char *syscall_names[] = {
+  // clang-format off
+  [SYS_fork]            = "fork",
+  [SYS_exit]            = "exit",
+  [SYS_wait]            = "wait",
+  [SYS_pipe]            = "pipe",
+  [SYS_read]            = "read",
+  [SYS_kill]            = "kill",
+  [SYS_exec]            = "exec",
+  [SYS_fstat]           = "fstat",
+  [SYS_chdir]           = "chdir",
+  [SYS_dup]             = "dup",
+  [SYS_getpid]          = "getpid",
+  [SYS_sbrk]            = "sbrk",
+  [SYS_pause]           = "pause",
+  [SYS_uptime]          = "uptime",
+  [SYS_open]            = "open",
+  [SYS_write]           = "write",
+  [SYS_mknod]           = "mknod",
+  [SYS_unlink]          = "unlink",
+  [SYS_link]            = "link",
+  [SYS_mkdir]           = "mkdir",
+  [SYS_close]           = "close",
+  [SYS_sync]            = "sync",
+  [SYS_ps]              = "ps",
+  [SYS_setpriority]     = "setpriority",
+  [SYS_mmap]            = "mmap",
+  [SYS_munmap]          = "munmap",
+  [SYS_trace]           = "trace",
+  [SYS_sysinfo]         = "sysinfo",
+  [SYS_getppid]         = "getppid",
+  [SYS_ptree]           = "ptree",
+  [SYS_getsyscallcount] = "getsyscallcount",
+  [SYS_waitx]           = "waitx",
+  [SYS_halt]            = "halt",
+  [SYS_reboot]          = "reboot",
+  [SYS_sched_yield]     = "sched_yield",
+  [SYS_getcpuid]        = "getcpuid",
+  [SYS_setprocname]     = "setprocname",
   // clang-format on
 };
 
@@ -148,9 +213,14 @@ syscall(void)
 
   num = p->trapframe->a7;
   if (num > 0 && num < NELEM(syscalls) && syscalls[num]) {
+    p->syscall_count++;
     // Use num to lookup the system call function for num, call it,
     // and store its return value in p->trapframe->a0
     p->trapframe->a0 = syscalls[num]();
+    if ((p->trace_mask >> num) & 1ULL) {
+      printk("%d: syscall %s -> %ld\n",
+             p->pid, syscall_names[num], (long)p->trapframe->a0);
+    }
   } else {
     printk("%d %s: unknown sys call %d\n", p->pid, p->name, num);
     p->trapframe->a0 = -1;

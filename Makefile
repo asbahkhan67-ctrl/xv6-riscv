@@ -155,6 +155,17 @@ UPROGS=\
 	$U/_cpuburn\
 	$U/_cowtest\
 	$U/_mmaptest\
+	$U/_strace\
+	$U/_free\
+	$U/_pstree\
+	$U/_agetest\
+	$U/_syscount\
+	$U/_time\
+	$U/_shutdown\
+	$U/_reboot\
+	$U/_yieldtest\
+	$U/_cpuinfo\
+	$U/_renametest\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)

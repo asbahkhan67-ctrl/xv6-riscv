@@ -125,8 +125,12 @@ found:
   p->pid = allocpid();
   p->priority = 10;
   p->cpu_time = 0;
+  p->trace_mask = 0;
+  p->syscall_count = 0;
+  p->ctime = ticks;
+  p->last_run_tick = ticks;
   for(int i = 0; i < NVMA; i++)
-  memset(&p->vmas[i], 0, sizeof(p->vmas[i]));
+    memset(&p->vmas[i], 0, sizeof(p->vmas[i]));
   p->state = USED;
 
   // Allocate a trapframe page.
@@ -167,6 +171,12 @@ freeproc(struct proc *p)
   p->pagetable = 0;
   p->sz = 0;
   p->pid = 0;
+  p->priority = 0;
+  p->cpu_time = 0;
+  p->trace_mask = 0;
+  p->syscall_count = 0;
+  p->ctime = 0;
+  p->last_run_tick = 0;
   p->name[0] = 0;
   p->chan = 0;
   p->killed = 0;
@@ -229,6 +239,7 @@ userinit(void)
 
   p->cwd = namei("/");
 
+  p->last_run_tick = ticks;
   p->state = RUNNABLE;
 
   release(&p->lock);
@@ -278,13 +289,14 @@ kfork(void)
     return -1;
   }
   np->sz = p->sz;
+  np->trace_mask = p->trace_mask;
 
   for(i = 0; i < NVMA; i++){
-  if(p->vmas[i].used){
-    np->vmas[i] = p->vmas[i];
-    np->vmas[i].file = filedup(p->vmas[i].file);
+    if(p->vmas[i].used){
+      np->vmas[i] = p->vmas[i];
+      np->vmas[i].file = filedup(p->vmas[i].file);
+    }
   }
-}
 
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
@@ -309,6 +321,7 @@ kfork(void)
   release(&wait_lock);
 
   acquire(&np->lock);
+  np->last_run_tick = ticks;
   np->state = RUNNABLE;
   release(&np->lock);
 
@@ -431,18 +444,81 @@ kwait(uint64 addr)
   }
 }
 
-// Per-CPU process scheduler.
-// Each CPU calls scheduler() after setting itself up.
-// Scheduler never returns.  It loops, doing:
-//  - choose a process to run.
-//  - swtch to start running that process.
-//  - eventually that process transfers control
-//    via swtch back to the scheduler.
+// Extended wait returning child's wait ticks and CPU run ticks.
+int
+kwaitx(uint64 addr, uint64 wtime_addr, uint64 rtime_addr)
+{
+  struct proc *pp;
+  int havekids, pid;
+  struct proc *p = myproc();
+
+  acquire(&wait_lock);
+
+  for (;;) {
+    havekids = 0;
+    for (pp = proc; pp < &proc[NPROC]; pp++) {
+      if (pp->parent == p) {
+        acquire(&pp->lock);
+
+        havekids = 1;
+        if (pp->state == ZOMBIE) {
+          uint64 rtime = pp->cpu_time;
+          uint64 now = ticks;
+          uint64 total = (now >= pp->ctime) ? (now - pp->ctime) : 0;
+          uint64 wtime = (total > rtime) ? (total - rtime) : 0;
+
+          pid = pp->pid;
+          if (addr != 0 &&
+              copyout(p->pagetable, p->sz, addr, (char *)&pp->xstate,
+                      sizeof(pp->xstate)) < 0) {
+            release(&pp->lock);
+            release(&wait_lock);
+            return -1;
+          }
+          if (wtime_addr != 0 &&
+              copyout(p->pagetable, p->sz, wtime_addr, (char *)&wtime,
+                      sizeof(wtime)) < 0) {
+            release(&pp->lock);
+            release(&wait_lock);
+            return -1;
+          }
+          if (rtime_addr != 0 &&
+              copyout(p->pagetable, p->sz, rtime_addr, (char *)&rtime,
+                      sizeof(rtime)) < 0) {
+            release(&pp->lock);
+            release(&wait_lock);
+            return -1;
+          }
+          pp->parent = 0;
+          freeproc(pp);
+          release(&pp->lock);
+          release(&wait_lock);
+          return pid;
+        }
+        release(&pp->lock);
+      }
+    }
+
+    if (!havekids || killed(p)) {
+      release(&wait_lock);
+      return -1;
+    }
+
+    sleep_prepare(p);
+    release(&wait_lock);
+    sleep();
+    acquire(&wait_lock);
+  }
+}
+
+// Per-CPU process scheduler with priority selection and priority aging.
 void
 scheduler(void)
 {
   struct proc *p;
   struct proc *best;
+  int best_eff_prio;
+  uint64 best_waited;
   struct cpu *c = mycpu();
 
   c->proc = 0;
@@ -451,16 +527,28 @@ scheduler(void)
     intr_on();
 
     best = 0;
+    best_eff_prio = 21;
+    best_waited = 0;
+    uint64 now = ticks;
 
     for(p = proc; p < &proc[NPROC]; p++){
       acquire(&p->lock);
 
       if(p->state == RUNNABLE){
-        if(best == 0 || p->priority < best->priority){
+        uint64 waited = (now > p->last_run_tick) ? (now - p->last_run_tick) : 0;
+        uint64 boost = waited / AGING_THRESHOLD;
+        int eff_prio = p->priority - (int)boost;
+        if(eff_prio < 1)
+          eff_prio = 1;
+
+        if(best == 0 || eff_prio < best_eff_prio ||
+           (eff_prio == best_eff_prio && waited > best_waited)){
           if(best != 0)
             release(&best->lock);
 
           best = p;
+          best_eff_prio = eff_prio;
+          best_waited = waited;
         } else {
           release(&p->lock);
         }
@@ -475,6 +563,7 @@ scheduler(void)
 
       swtch(&c->context, &best->context);
 
+      best->last_run_tick = ticks;
       c->proc = 0;
       release(&best->lock);
     }
@@ -597,8 +686,9 @@ wakeup(void *chan)
       p->chan = 0;
 
       // If this waiting process has gotten so far as to actually
-      // go to sleep, also set it back to RUNNING.
+      // go to sleep, also set it back to RUNNABLE.
       if (p->state == SLEEPING) {
+        p->last_run_tick = ticks;
         p->state = RUNNABLE;
       }
     }
@@ -623,6 +713,7 @@ kkill(int pid)
       p->killed = 1;
       if (p->state == SLEEPING) {
         // Wake process from sleep().
+        p->last_run_tick = ticks;
         p->state = RUNNABLE;
       }
       release(&p->lock);
@@ -733,6 +824,144 @@ setpriority(int pid, int priority)
       return 0;
     }
 
+    release(&p->lock);
+  }
+
+  return -1;
+}
+
+uint64
+nproc_active(void)
+{
+  struct proc *p;
+  uint64 count = 0;
+
+  for(p = proc; p < &proc[NPROC]; p++){
+    acquire(&p->lock);
+    if(p->state != UNUSED)
+      count++;
+    release(&p->lock);
+  }
+
+  return count;
+}
+
+int
+kgetppid(void)
+{
+  struct proc *p = myproc();
+  int ppid = 0;
+
+  acquire(&wait_lock);
+  if(p->parent != 0){
+    acquire(&p->parent->lock);
+    ppid = p->parent->pid;
+    release(&p->parent->lock);
+  }
+  release(&wait_lock);
+
+  return ppid;
+}
+
+struct pnode {
+  int pid;
+  int ppid;
+  int priority;
+  enum procstate state;
+  char name[16];
+};
+
+static void
+print_ptree_nodes(struct pnode *nodes, int count, int ppid, int depth)
+{
+  static char *states[] = {
+    // clang-format off
+    [UNUSED]    = "unused",
+    [USED]      = "used  ",
+    [SLEEPING]  = "sleep ",
+    [RUNNABLE]  = "runble",
+    [RUNNING]   = "run   ",
+    [ZOMBIE]    = "zombie"
+    // clang-format on
+  };
+  int i, d;
+  char *st;
+
+  if(depth > 16)
+    return;
+
+  for(i = 0; i < count; i++){
+    if(nodes[i].ppid == ppid){
+      for(d = 0; d < depth; d++)
+        printk("  ");
+      if(depth > 0)
+        printk("|-- ");
+      if(nodes[i].state >= 0 && nodes[i].state < NELEM(states) && states[nodes[i].state])
+        st = states[nodes[i].state];
+      else
+        st = "???";
+      printk("[%d] %s (prio=%d, state=%s)\n",
+             nodes[i].pid, nodes[i].name, nodes[i].priority, st);
+      print_ptree_nodes(nodes, count, nodes[i].pid, depth + 1);
+    }
+  }
+}
+
+void
+proctree(void)
+{
+  struct pnode *nodes;
+  struct proc *p;
+  int count = 0;
+
+  nodes = (struct pnode *)kalloc();
+  if(nodes == 0)
+    return;
+
+  acquire(&wait_lock);
+  for(p = proc; p < &proc[NPROC]; p++){
+    acquire(&p->lock);
+    if(p->state != UNUSED){
+      nodes[count].pid = p->pid;
+      nodes[count].priority = p->priority;
+      nodes[count].state = p->state;
+      safestrcpy(nodes[count].name, p->name, sizeof(nodes[count].name));
+      release(&p->lock);
+
+      if(p->parent != 0){
+        acquire(&p->parent->lock);
+        nodes[count].ppid = p->parent->pid;
+        release(&p->parent->lock);
+      } else {
+        nodes[count].ppid = 0;
+      }
+      count++;
+    } else {
+      release(&p->lock);
+    }
+  }
+  release(&wait_lock);
+
+  print_ptree_nodes(nodes, count, 0, 0);
+  kfree((void *)nodes);
+}
+
+int
+getsyscallcount_proc(int pid)
+{
+  struct proc *p;
+  int count;
+
+  if(pid <= 0)
+    return (int)myproc()->syscall_count;
+
+  for(p = proc; p < &proc[NPROC]; p++){
+    acquire(&p->lock);
+    if(p->state != UNUSED && p->pid == pid){
+      count = (int)p->syscall_count;
+      release(&p->lock);
+      return count;
+    }
     release(&p->lock);
   }
 

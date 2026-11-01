@@ -78,20 +78,18 @@ struct trapframe {
 
 enum procstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
-
 #define NVMA 16
 
 struct vma {
-  int used;                 // 1 if this VMA is in use
-  uint64 addr;              // Starting virtual address
-  uint64 length;            // Length of the mapping
-  uint64 maplen;            // Page-rounded length
-  int prot;                 // Protection flags
-  int flags;                // MAP_SHARED / MAP_PRIVATE
-  struct file *file;        // Backing file
-  uint64 offset;            // Offset within the file
+  int used;          // 1 if this VMA is in use
+  uint64 addr;       // Starting virtual address
+  uint64 length;     // Length of the mapping
+  uint64 maplen;     // Page-rounded length
+  int prot;          // Protection flags
+  int flags;         // MAP_SHARED / MAP_PRIVATE
+  struct file *file; // Backing file
+  uint64 offset;     // Offset within the file
 };
-
 
 // Per-process state
 struct proc {
@@ -105,6 +103,10 @@ struct proc {
   int pid;              // Process ID
   int priority;         // Scheduling priority
   uint64 cpu_time;      // CPU time used by the process
+  uint64 trace_mask;    // Syscall tracing bitmask
+  uint64 syscall_count; // Total system calls invoked
+  uint64 ctime;         // Creation timestamp (ticks)
+  uint64 last_run_tick; // Last tick process ran or became runnable
 
   // wait_lock must be held when using this:
   struct proc *parent; // Parent process
@@ -117,6 +119,6 @@ struct proc {
   struct context context;      // swtch() here to run process
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
-  struct vma vmas[NVMA];     // Memory-mapped regions
+  struct vma vmas[NVMA];       // Memory-mapped regions
   char name[16];               // Process name (debugging)
 };

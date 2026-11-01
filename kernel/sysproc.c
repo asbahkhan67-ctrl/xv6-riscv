@@ -5,8 +5,8 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
+#include "sysinfo.h"
 #include "vm.h"
-
 
 uint64
 sys_exit(void)
@@ -112,14 +112,12 @@ sys_uptime(void)
   return xticks;
 }
 
-
 uint64
 sys_ps(void)
 {
   procdump();
   return 0;
 }
-
 
 uint64
 sys_setpriority(void)
@@ -165,7 +163,6 @@ mmap_find_addr(struct proc *p, uint64 length)
   return addr;
 }
 
-
 uint64
 sys_mmap(void)
 {
@@ -207,7 +204,6 @@ sys_mmap(void)
   if(f == 0)
     return -1;
 
-
   for(i = 0; i < NVMA; i++){
     if(p->vmas[i].used == 0)
       break;
@@ -234,7 +230,6 @@ sys_mmap(void)
   return vma->addr;
 }
 
-
 uint64
 sys_munmap(void)
 {
@@ -251,4 +246,127 @@ sys_munmap(void)
     return -1;
 
   return mmap_unmap(myproc(), addr, length);
+}
+
+uint64
+sys_trace(void)
+{
+  uint64 mask;
+
+  argaddr(0, &mask);
+  myproc()->trace_mask = mask;
+  return 0;
+}
+
+uint64
+sys_sysinfo(void)
+{
+  uint64 addr;
+  struct sysinfo info;
+  struct proc *p = myproc();
+
+  argaddr(0, &addr);
+
+  info.freemem = kfreemem();
+  info.totalmem = ktotalmem();
+  info.nproc = nproc_active();
+  acquire(&tickslock);
+  info.uptime = ticks;
+  release(&tickslock);
+
+  if(copyout(p->pagetable, p->sz, addr, (char *)&info, sizeof(info)) < 0)
+    return -1;
+
+  return 0;
+}
+
+uint64
+sys_getppid(void)
+{
+  return kgetppid();
+}
+
+uint64
+sys_ptree(void)
+{
+  proctree();
+  return 0;
+}
+
+uint64
+sys_getsyscallcount(void)
+{
+  int pid;
+
+  argint(0, &pid);
+  return getsyscallcount_proc(pid);
+}
+
+uint64
+sys_waitx(void)
+{
+  uint64 addr, waddr, raddr;
+
+  argaddr(0, &addr);
+  argaddr(1, &waddr);
+  argaddr(2, &raddr);
+
+  return kwaitx(addr, waddr, raddr);
+}
+
+uint64
+sys_halt(void)
+{
+  printk("System halting...\n");
+  *(volatile uint32 *)VIRT_TEST = 0x5555;
+  for(;;)
+    ;
+  return 0;
+}
+
+uint64
+sys_reboot(void)
+{
+  printk("System rebooting...\n");
+  *(volatile uint32 *)VIRT_TEST = 0x7777;
+  for(;;)
+    ;
+  return 0;
+}
+
+uint64
+sys_sched_yield(void)
+{
+  yield();
+  return 0;
+}
+
+uint64
+sys_getcpuid(void)
+{
+  int id;
+
+  push_off();
+  id = cpuid();
+  pop_off();
+  return id;
+}
+
+uint64
+sys_setprocname(void)
+{
+  char buf[16];
+  struct proc *p = myproc();
+
+  if(argstr(0, buf, sizeof(buf)) < 0)
+    return -1;
+
+  if(buf[0] == '\0')
+    return -1;
+
+  acquire(&p->lock);
+  safestrcpy(p->name, buf, sizeof(p->name));
+  release(&p->lock);
+
+  return 0;
 }

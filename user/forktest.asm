@@ -45,7 +45,7 @@ forktest(void)
 
   print("fork test\n");
   30:	00000517          	auipc	a0,0x0
-  34:	43850513          	addi	a0,a0,1080 # 468 <munmap+0xc>
+  34:	49850513          	addi	a0,a0,1176 # 4c8 <setprocname+0xa>
   38:	fc9ff0ef          	jal	0 <print>
 
   for (n = 0; n < N; n++) {
@@ -67,7 +67,7 @@ forktest(void)
   if (n == N) {
     print("fork claimed to work N times!\n");
   52:	00000517          	auipc	a0,0x0
-  56:	46650513          	addi	a0,a0,1126 # 4b8 <munmap+0x5c>
+  56:	4c650513          	addi	a0,a0,1222 # 518 <setprocname+0x5a>
   5a:	fa7ff0ef          	jal	0 <print>
     exit(1);
   5e:	4505                	li	a0,1
@@ -80,7 +80,7 @@ forktest(void)
     if (wait(0) < 0) {
       print("wait stopped early\n");
   68:	00000517          	auipc	a0,0x0
-  6c:	41050513          	addi	a0,a0,1040 # 478 <munmap+0x1c>
+  6c:	47050513          	addi	a0,a0,1136 # 4d8 <setprocname+0x1a>
   70:	f91ff0ef          	jal	0 <print>
       exit(1);
   74:	4505                	li	a0,1
@@ -91,7 +91,7 @@ forktest(void)
   if (wait(0) != -1) {
     print("wait got too many\n");
   7a:	00000517          	auipc	a0,0x0
-  7e:	41650513          	addi	a0,a0,1046 # 490 <munmap+0x34>
+  7e:	47650513          	addi	a0,a0,1142 # 4f0 <setprocname+0x32>
   82:	f7fff0ef          	jal	0 <print>
     exit(1);
   86:	4505                	li	a0,1
@@ -114,7 +114,7 @@ forktest(void)
 
   print("fork test OK\n");
   aa:	00000517          	auipc	a0,0x0
-  ae:	3fe50513          	addi	a0,a0,1022 # 4a8 <munmap+0x4c>
+  ae:	45e50513          	addi	a0,a0,1118 # 508 <setprocname+0x4a>
   b2:	f4fff0ef          	jal	0 <print>
 }
   b6:	60e2                	ld	ra,24(sp)
@@ -892,3 +892,113 @@ munmap:
  45e:	00000073          	ecall
  ret
  462:	8082                	ret
+
+0000000000000464 <trace>:
+.global trace
+trace:
+ li a7, SYS_trace
+ 464:	48ed                	li	a7,27
+ ecall
+ 466:	00000073          	ecall
+ ret
+ 46a:	8082                	ret
+
+000000000000046c <sysinfo>:
+.global sysinfo
+sysinfo:
+ li a7, SYS_sysinfo
+ 46c:	48f1                	li	a7,28
+ ecall
+ 46e:	00000073          	ecall
+ ret
+ 472:	8082                	ret
+
+0000000000000474 <getppid>:
+.global getppid
+getppid:
+ li a7, SYS_getppid
+ 474:	48f5                	li	a7,29
+ ecall
+ 476:	00000073          	ecall
+ ret
+ 47a:	8082                	ret
+
+000000000000047c <ptree>:
+.global ptree
+ptree:
+ li a7, SYS_ptree
+ 47c:	48f9                	li	a7,30
+ ecall
+ 47e:	00000073          	ecall
+ ret
+ 482:	8082                	ret
+
+0000000000000484 <getsyscallcount>:
+.global getsyscallcount
+getsyscallcount:
+ li a7, SYS_getsyscallcount
+ 484:	48fd                	li	a7,31
+ ecall
+ 486:	00000073          	ecall
+ ret
+ 48a:	8082                	ret
+
+000000000000048c <waitx>:
+.global waitx
+waitx:
+ li a7, SYS_waitx
+ 48c:	02000893          	li	a7,32
+ ecall
+ 490:	00000073          	ecall
+ ret
+ 494:	8082                	ret
+
+0000000000000496 <halt>:
+.global halt
+halt:
+ li a7, SYS_halt
+ 496:	02100893          	li	a7,33
+ ecall
+ 49a:	00000073          	ecall
+ ret
+ 49e:	8082                	ret
+
+00000000000004a0 <reboot>:
+.global reboot
+reboot:
+ li a7, SYS_reboot
+ 4a0:	02200893          	li	a7,34
+ ecall
+ 4a4:	00000073          	ecall
+ ret
+ 4a8:	8082                	ret
+
+00000000000004aa <sched_yield>:
+.global sched_yield
+sched_yield:
+ li a7, SYS_sched_yield
+ 4aa:	02300893          	li	a7,35
+ ecall
+ 4ae:	00000073          	ecall
+ ret
+ 4b2:	8082                	ret
+
+00000000000004b4 <getcpuid>:
+.global getcpuid
+getcpuid:
+ li a7, SYS_getcpuid
+ 4b4:	02400893          	li	a7,36
+ ecall
+ 4b8:	00000073          	ecall
+ ret
+ 4bc:	8082                	ret
+
+00000000000004be <setprocname>:
+.global setprocname
+setprocname:
+ li a7, SYS_setprocname
+ 4be:	02500893          	li	a7,37
+ ecall
+ 4c2:	00000073          	ecall
+ ret
+ 4c6:	8082                	ret

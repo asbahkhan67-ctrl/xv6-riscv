@@ -29,6 +29,10 @@ kvmmake(void)
   memset(kpgtbl, 0, PGSIZE);
 
   // uart registers
+  // qemu virt test/power control registers
+  kvmmap(kpgtbl, VIRT_TEST, VIRT_TEST, PGSIZE, PTE_R | PTE_W);
+
+  // uart registers
   kvmmap(kpgtbl, UART0, UART0, PGSIZE, PTE_R | PTE_W);
 
   // virtio mmio disk interface

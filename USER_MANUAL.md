@@ -1,96 +1,69 @@
 # NexusXv6 User Manual
 
-## Extended xv6-RISC-V Kernel
+## Extended xv6-RISC-V Kernel (15 Extensions)
 
-This manual explains how to build, run, and test **NexusXv6**.
-
-It is intended for an evaluator who wants to verify the implemented kernel extensions without needing to inspect the source code first.
+This manual explains how to build, run, and verify all **15 kernel extensions** implemented in **NexusXv6**. It is designed as a step-by-step guide for evaluators and users.
 
 ---
 
 # 1. Requirements
 
-NexusXv6 is designed to run in:
+NexusXv6 runs on **Windows + WSL2 (Ubuntu)** with QEMU and the 64-bit RISC-V GCC toolchain:
 
-* Windows
-* WSL2
-* Ubuntu
-* QEMU
-* RISC-V 64-bit cross-compilation environment
-
-The following tools should be installed:
-
-```text
-git
-make
-gcc
-QEMU
-riscv64-unknown-elf-gcc
+```bash
+sudo apt update
+sudo apt install -y build-essential gcc-riscv64-unknown-elf qemu-system-misc qemu-system-riscv bc gdb-multiarch perl
 ```
+
+Required tools:
+
+* `make` & `gcc`
+* `perl`
+* `riscv64-unknown-elf-gcc`
+* `qemu-system-riscv64` (version >= 7.2)
 
 ---
 
 # 2. Open the Project
 
-Start Ubuntu through WSL2.
-
-Go to the project directory:
+Open your **WSL2 Ubuntu** terminal and navigate to the repository:
 
 ```bash
-cd ~/xv6-riscv
+cd /mnt/c/Kernel/xv6-riscv
 ```
 
-Check that the project is present:
+Verify the directory contents:
 
 ```bash
 ls
 ```
 
-You should see files/directories similar to:
-
-```text
-kernel
-user
-Makefile
-README.md
-USER_MANUAL.md
-```
+Expected items include `kernel`, `user`, `mkfs`, `Makefile`, `README.md`, and `USER_MANUAL.md`.
 
 ---
 
-# 3. Build the Kernel
+# 3. Build the Kernel & File System Image
 
-Before building, clean any previous build:
+Clean previous build artifacts and compile everything:
 
 ```bash
 make clean
-```
-
-Then compile:
-
-```bash
 make
 ```
 
-A linker warning similar to the following may appear:
-
-```text
-riscv64-unknown-elf-ld: warning: kernel/kernel has a LOAD segment with RWX permissions
-```
-
-This warning is expected for the xv6 build and does not prevent the kernel from running.
+> Note: A linker warning `kernel/kernel has a LOAD segment with RWX permissions` is normal for xv6 builds and safe to ignore.
 
 ---
 
-# 4. Start NexusXv6
+# 4. Boot NexusXv6 in QEMU
 
-Run:
+Start the multi-core RISC-V virtual machine:
 
 ```bash
 make qemu
 ```
 
-A successful boot should end with something similar to:
+Expected boot sequence:
 
 ```text
 xv6 kernel is booting
@@ -101,129 +74,65 @@ init: starting sh
 $
 ```
 
-The `$` prompt means the xv6 shell is ready.
+The `$` prompt indicates the NexusXv6 shell is ready.
 
 ---
 
-# 5. Test `ps`
-
-At the xv6 shell:
+# 5. Test Module 1 — Process Inspection (`ps`)
 
 ```text
 $ ps
 ```
 
-The command displays process information.
-
-Expected columns:
+Expected output columns:
 
 ```text
-PID     PRIORITY    CPU-TICKS    STATE     NAME
+PID   PRIORITY   CPU-TICKS   STATE     NAME
+1     10         ...         sleep     init
+2     10         ...         sleep     sh
+3     10         ...         run       ps
 ```
-
-The exact values depend on the processes currently running.
-
-The important things to verify are that:
-
-* The command executes successfully.
-* Processes are listed.
-* A priority value is displayed.
-* CPU tick information is displayed.
-* Process state and name are displayed.
 
 ---
 
-# 6. Test Priority Scheduling
+# 6. Test Module 2 — Priority-Based Scheduler (`setpriority`)
 
-First display the current processes:
-
-```text
-$ ps
-```
-
-Find the PID of the shell.
-
-For example:
-
-```text
-PID     PRIORITY    CPU-TICKS    STATE     NAME
-2       10          ...          RUNNING   sh
-```
-
-Change its priority:
+Check your shell's PID (typically `2`) and update its priority (`1` = highest, `10` = default, `20` = lowest):
 
 ```text
 $ setpriority 2 5
-```
-
-Then run:
-
-```text
+Process 2 priority set to 5
 $ ps
 ```
 
-The shell should now show:
+Verify PID `2` now displays priority `5`. Out-of-range priorities (e.g., `0` or `25`) fail safely:
 
 ```text
-PID     PRIORITY    CPU-TICKS    STATE     NAME
-2       5           ...          RUNNING   sh
+$ setpriority 2 25
+setpriority: failed
 ```
-
-Priority values supported by NexusXv6 are:
-
-```text
-1 = highest
-10 = default
-20 = lowest
-```
-
-Invalid values outside the range `1–20` are rejected.
 
 ---
 
-# 7. Observe CPU-Time Accounting
+# 7. Test Module 3 — Per-Process CPU-Time Accounting (`cpuburn`)
 
-Run:
+Start a background CPU-bound worker and observe its `CPU-TICKS` increase:
 
-```text
-$ ps
-```
-
-Record the CPU tick value of a process.
-
-Run another command and then execute:
-
-```text
-$ ps
-```
-
-The CPU tick counters can change as processes receive timer-driven CPU time.
-
-The CPU counter is maintained independently for each process.
-
-Another function "cpuburn" can help understand how this work, you can test it using 
 ```text
 $ cpuburn &
-```
-Then check its cpu-ticks
-
-```text
+$ ps
 $ ps
 ```
-You can close the cpuburn process by Kill ID
 
+Stop the background process using `kill <pid>` once verified.
 
 ---
 
-# 8. Test Copy-on-Write
-
-Run:
+# 8. Test Module 4 — Copy-on-Write Fork (`cowtest`)
 
 ```text
 $ cowtest
 ```
-
-The test creates memory, forks children, and modifies the memory from the child processes.
 
 Expected output:
 
@@ -233,21 +142,11 @@ After child 1: A
 After child 2: A
 ```
 
-The important result is that the parent's value remains `A` even though the children modify their own copies.
-
-This verifies that:
-
-* Parent and child initially share physical memory.
-* Writable pages are converted to COW pages during `fork()`.
-* A write causes a COW page fault.
-* A private physical page is created when necessary.
-* The parent's data remains unchanged.
+Confirms child processes write to private COW copies without mutating the parent's shared page.
 
 ---
 
-# 9. Test Memory Mapping
-
-Run:
+# 9. Test Module 5 — Memory Mapping (`mmaptest`)
 
 ```text
 $ mmaptest
@@ -261,245 +160,233 @@ mmaptest: mapped address 0x0000003FFFFFD000
 mmaptest: ALL TESTS PASSED
 ```
 
-The exact virtual address may differ depending on the memory layout.
-
-The test verifies:
-
-1. Creating a file.
-2. Writing initial contents to the file.
-3. Creating a `MAP_SHARED` mapping.
-4. Reading file contents through the mapping.
-5. Modifying the mapped memory.
-6. Calling `munmap()`.
-7. Verifying that the modification was written back to the file.
-8. Creating a `MAP_PRIVATE` mapping.
-9. Modifying the private mapping.
-10. Removing the mapping.
+Verifies demand-paged `MAP_SHARED` read/modify/write-back on `munmap()` and isolated `MAP_PRIVATE` modifications.
 
 ---
 
-# 10. Run the Complete xv6 Test Suite
+# 10. Test Module 6 — System Call Tracing (`strace`)
 
-Run:
+Trace all system calls made by a command with `-a`:
 
 ```text
-$ usertests
+$ strace -a echo hello
 ```
 
-The complete test suite should eventually report:
+Or pass a specific bitmask (for example, `32` = `1 << SYS_read` to trace `read()` calls only):
 
 ```text
-ALL TESTS PASSED
+$ strace 32 grep xv6 README
 ```
 
-Individual tests normally appear with:
+Expected output prints `<pid>: syscall <name> -> <return_value>` for each matching system call.
+
+---
+
+# 11. Test Module 7 — System Resource Diagnostics (`free`)
 
 ```text
-OK
+$ free
 ```
 
-For example:
+Expected output:
 
 ```text
-test ...
+Total memory:  ... KB (... pages)
+Used memory:   ... KB (... pages)
+Free memory:   ... KB (... pages)
+Active procs:  3 / 64
+System uptime: ... ticks
+```
+
+---
+
+# 12. Test Module 8 — Parent PID & Process Hierarchy (`pstree`)
+
+```text
+$ pstree
+```
+
+Expected output:
+
+```text
+Current PID: 8 | Parent PID: 2
+Process Hierarchy:
+[1] init (prio=10, state=sleep )
+  |-- [2] sh (prio=5, state=sleep )
+    |-- [8] pstree (prio=10, state=run   )
+```
+
+---
+
+# 13. Test Module 9 — Priority Aging / Starvation Prevention (`agetest`)
+
+```text
+$ agetest
+```
+
+Expected output:
+
+```text
+agetest: starting 4 high-priority hogs (prio 3) and 1 low-priority worker (prio 20)
+agetest: low-priority worker (PID ..., prio 20) completed without starvation
+agetest: ALL TESTS PASSED
+```
+
+Verifies that dynamic priority aging boosts long-waiting `RUNNABLE` processes even when all CPU cores are saturated by high-priority tasks.
+
+---
+
+# 14. Test Module 10 — Per-Process Syscall Accounting (`syscount`)
+
+Run the self-check (no arguments) or inspect a specific process ID (such as PID `2` for `sh`):
+
+```text
+$ syscount
+PID 15 syscall count before 5x getpid(): 1
+PID 15 syscall count after  5x getpid(): 7
+
+$ syscount 2
+Process 2 total syscalls: ...
+```
+
+---
+
+# 15. Test Module 11 — Process Execution Benchmarking (`time`)
+
+Benchmark any user command using `time <command> [args...]`:
+
+```text
+$ time cowtest
+$ time mmaptest
+```
+
+Expected benchmark summary at completion:
+
+```text
+--- Benchmark: cowtest (PID ...) ---
+Elapsed ticks: ...
+CPU ticks:     ...
+Wait ticks:    ...
+Exit status:   0
+```
+
+---
+
+# 16. Test Module 13 — Voluntary CPU Yielding (`yieldtest`)
+
+```text
+$ yieldtest
+```
+
+Expected output:
+
+```text
+yieldtest: starting cooperative CPU yield test
+Worker A (PID ...): step 1 -> sched_yield()
+Worker B (PID ...): step 1 -> sched_yield()
 ...
-OK
-```
-
-Some xv6 memory-management tests intentionally trigger page faults and invalid accesses. Therefore, messages such as:
-
-```text
-usertrap(): unexpected scause
-```
-
-may appear during tests such as memory-protection or invalid-access tests.
-
-This is not necessarily a failure.
-
-The important result is that the corresponding test continues and reports:
-
-```text
-OK
-```
-
-and that the complete suite reaches:
-
-```text
-ALL TESTS PASSED
+yieldtest: ALL TESTS PASSED
 ```
 
 ---
 
-# 11. Quick Evaluation Checklist
-
-An evaluator can verify the project with the following sequence:
+# 17. Test Module 14 — Multi-Core HART Identification (`cpuinfo`)
 
 ```text
-$ make clean
-$ make
-$ make qemu
+$ cpuinfo
 ```
 
-Then inside xv6:
+Expected output showing execution across QEMU's SMP RISC-V harts (`0`, `1`, `2`):
 
 ```text
-$ ps
-$ setpriority <pid> 5
-$ ps
-$ cowtest
-$ mmaptest
+Parent (PID ...) running on RISC-V hart ...
+Worker 0 (PID ...) executing on RISC-V hart ...
+Worker 1 (PID ...) executing on RISC-V hart ...
+Worker 2 (PID ...) executing on RISC-V hart ...
+```
+
+---
+
+# 18. Test Module 15 — Dynamic Process Naming (`renametest`)
+
+```text
+$ renametest
+```
+
+Or specify a custom name:
+
+```text
+$ renametest custom_daemon
+```
+
+Expected output shows `ps` before and after `setprocname()`, ending with:
+
+```text
+renametest: ALL TESTS PASSED
+```
+
+---
+
+# 19. Run the Complete xv6 Compatibility Suite (`usertests`)
+
+```text
 $ usertests
 ```
 
-Expected final result:
+Expected final line:
 
 ```text
 ALL TESTS PASSED
 ```
 
----
-
-# 12. Feature-to-Test Mapping
-
-| Feature                      | Test                 |
-| ---------------------------- | -------------------- |
-| Process information          | `ps`                 |
-| Priority scheduling          | `setpriority` + `ps` |
-| CPU-time accounting          | `ps`                 |
-| Copy-on-Write                | `cowtest`            |
-| `mmap()`                     | `mmaptest`           |
-| `munmap()`                   | `mmaptest`           |
-| General kernel compatibility | `usertests`          |
+> Note: Negative memory-protection tests intentionally print `usertrap(): unexpected scause ...` before reporting `OK`. This is expected xv6 test behavior.
 
 ---
 
-# 13. Important Source Files
+# 20. Test Module 12 — Clean Power Management (`reboot` & `shutdown`)
 
-The main implementation files are:
-
-```text
-kernel/proc.h
-kernel/proc.c
-kernel/sysproc.c
-kernel/syscall.h
-kernel/syscall.c
-kernel/trap.c
-kernel/vm.c
-kernel/kalloc.c
-kernel/riscv.h
-kernel/param.h
-kernel/defs.h
-```
-
-User-space test and command programs include:
+To cleanly restart NexusXv6 inside QEMU:
 
 ```text
-user/ps.c
-user/setpriority.c
-user/cowtest.c
-user/mmaptest.c
+$ reboot
 ```
+
+NexusXv6 flushes disk buffers (`sync()`) and resets the QEMU `virt` machine back to boot.
+
+To cleanly power off NexusXv6 and return to your WSL terminal (without needing `Ctrl+A` then `X`):
+
+```text
+$ shutdown
+```
+
+Expected output:
+
+```text
+Shutting down NexusXv6...
+System halting...
+```
+
+*(Manual QEMU exit via `Ctrl+A`, then `X` also remains available at any time.)*
 
 ---
 
-# 14. Stopping QEMU
+# 21. Feature-to-Test Summary Table
 
-To exit the QEMU session, use the QEMU escape sequence:
-
-```text
-Ctrl-A
-```
-
-then:
-
-```text
-X
-```
-
-That is:
-
-```text
-Ctrl+A, then X
-```
-
-You should return to the WSL terminal.
-
----
-
-# 15. Troubleshooting
-
-## `make: command not found`
-
-Install the required build tools:
-
-```bash
-sudo apt update
-sudo apt install build-essential
-```
-
----
-
-## `qemu-system-riscv64: command not found`
-
-Install QEMU:
-
-```bash
-sudo apt install qemu-system-misc
-```
-
----
-
-## RISC-V compiler not found
-
-Check:
-
-```bash
-riscv64-unknown-elf-gcc --version
-```
-
-If it is unavailable, install the appropriate RISC-V cross-compiler package for the Ubuntu environment.
-
----
-
-## Build errors after changing source files
-
-Run:
-
-```bash
-make clean
-make
-```
-
-Then start QEMU again:
-
-```bash
-make qemu
-```
-
----
-
-# 16. Successful Verification
-
-NexusXv6 has been verified using:
-
-```text
-ps
-setpriority
-cowtest
-mmaptest
-usertests
-```
-
-The dedicated `mmaptest` completed with:
-
-```text
-mmaptest: ALL TESTS PASSED
-```
-
-The complete xv6 `usertests` suite completed with:
-
-```text
-ALL TESTS PASSED
-```
-
-This provides a reproducible procedure for evaluating the five kernel extensions implemented in NexusXv6.
+| #  | Extension                          | System Call(s)          | User Command / Test   |
+| -: | ---------------------------------- | ----------------------- | --------------------- |
+|  1 | Process inspection                 | `ps()`                  | `ps`                  |
+|  2 | Priority-based CPU scheduler       | `setpriority()`         | `setpriority` + `ps`  |
+|  3 | Per-process CPU-time accounting    | *(timer trap)*          | `cpuburn` + `ps`      |
+|  4 | Copy-on-Write (COW) fork           | *(page fault)*          | `cowtest`             |
+|  5 | Memory-mapped files                | `mmap()`, `munmap()`    | `mmaptest`            |
+|  6 | System call tracing                | `trace()`               | `strace`              |
+|  7 | System resource diagnostics        | `sysinfo()`             | `free`                |
+|  8 | Parent PID & process tree          | `getppid()`, `ptree()`  | `pstree`              |
+|  9 | Priority aging (anti-starvation)   | *(scheduler aging)*     | `agetest`             |
+| 10 | Per-process syscall accounting     | `getsyscallcount()`     | `syscount`            |
+| 11 | Process execution benchmarking     | `waitx()`               | `time <cmd>`          |
+| 12 | Clean system power management      | `halt()`, `reboot()`    | `shutdown`, `reboot`  |
+| 13 | Voluntary CPU yielding             | `sched_yield()`         | `yieldtest`           |
+| 14 | Multi-core HART identification     | `getcpuid()`            | `cpuinfo`             |
+| 15 | Dynamic process naming             | `setprocname()`         | `renametest`          |
+|  * | Full xv6 regression suite          | *(all baseline calls)*  | `usertests`           |

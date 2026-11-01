@@ -140,3 +140,26 @@ decref(void *pa)
 {
   kfree(pa);
 }
+
+uint64
+kfreemem(void)
+{
+  struct run *r;
+  uint64 free_bytes = 0;
+
+  acquire(&kmem.lock);
+  for(r = kmem.freelist; r != 0; r = r->next)
+    free_bytes += PGSIZE;
+  release(&kmem.lock);
+
+  return free_bytes;
+}
+
+uint64
+ktotalmem(void)
+{
+  uint64 start = PGROUNDUP((uint64)end);
+  if(PHYSTOP <= start)
+    return 0;
+  return PHYSTOP - start;
+}

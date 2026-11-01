@@ -62,6 +62,8 @@ void            kfree(void *);
 void            incref(void *);
 int             getref(void *);
 void            decref(void *);
+uint64          kfreemem(void);
+uint64          ktotalmem(void);
 void            kinit(void);
 
 // log.c
@@ -101,12 +103,17 @@ void            sleep_prepare(void*);
 void            sleep(void);
 void            userinit(void);
 int             kwait(uint64);
+int             kwaitx(uint64, uint64, uint64);
 void            wakeup(void*);
 void            yield(void);
 int             either_copyout(int user_dst, uint64 dst, void *src, uint64 len);
 int             either_copyin(void *dst, int user_src, uint64 src, uint64 len);
 void            procdump(void);
+void            proctree(void);
 int             setpriority(int, int);
+uint64          nproc_active(void);
+int             kgetppid(void);
+int             getsyscallcount_proc(int);
 
 // swtch.S
 void            swtch(struct context*, struct context*);
