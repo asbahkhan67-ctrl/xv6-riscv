@@ -8,8 +8,8 @@
 | :--- | :--- |
 | **Muhammad Asbah Khan** | `BCS-F24-E01` |
 | **Musfirah Chaudhry** | `BCS-F24-E31` |
-| **Sahiba Bibi** | `BCS-F24-E13` |
-| **Muhammad Shahbaz** | `BCS-F24-E14` |
+| **Sahiba Bibi** | `BCS-F24-E14` |
+| **Muhammad Shahbaz** | `BCS-F24-E13` |
 
 ---
 
