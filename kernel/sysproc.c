@@ -4,7 +4,10 @@
 #include "param.h"
 #include "memlayout.h"
 #include "spinlock.h"
+#include "sleeplock.h"
 #include "proc.h"
+#include "fs.h"
+#include "file.h"
 #include "sysinfo.h"
 #include "vm.h"
 
@@ -128,12 +131,35 @@ sys_setpriority(void)
   argint(0, &pid);
   argint(1, &priority);
 
-  if(priority < 1 || priority > 20)
+  if (pid < 0 || priority < PRIO_MIN || priority > PRIO_MAX)
     return -1;
 
   return setpriority(pid, priority);
 }
 
+uint64
+sys_getpriority(void)
+{
+  int pid;
+
+  argint(0, &pid);
+
+  if (pid < 0)
+    return -1;
+
+  return getpriority(pid);
+}
+
+uint64
+sys_getcowfaults(void)
+{
+  int pid;
+
+  argint(0, &pid);
+  return getcowfaults_proc(pid);
+}
+
+// Find an unused virtual address range below TRAPFRAME for a new mmap VMA.
 uint64
 mmap_find_addr(struct proc *p, uint64 length)
 {
@@ -143,26 +169,24 @@ mmap_find_addr(struct proc *p, uint64 length)
 
   end = TRAPFRAME;
 
-  for(i = 0; i < NVMA; i++){
-    if(p->vmas[i].used){
-      if(p->vmas[i].addr < end)
-        end = p->vmas[i].addr;
-    }
+  for (i = 0; i < NVMA; i++) {
+    if (p->vmas[i].used && p->vmas[i].addr < end)
+      end = p->vmas[i].addr;
   }
 
   length = PGROUNDUP(length);
-
-  if(length > end)
+  if (length > end)
     return 0;
 
   addr = PGROUNDDOWN(end - length);
-
-  if(addr < p->sz)
+  if (addr < p->sz)
     return 0;
 
   return addr;
 }
 
+// Reserve a lazy virtual memory mapping (file-backed or MAP_ANONYMOUS).
+// Physical pages are allocated on demand by mmapfault() on first access.
 uint64
 sys_mmap(void)
 {
@@ -172,7 +196,10 @@ sys_mmap(void)
   int prot;
   int flags;
   int fd;
-  struct file *f;
+  int is_anon;
+  int is_shared;
+  int is_private;
+  struct file *f = 0;
   struct proc *p = myproc();
   struct vma *vma;
   int i;
@@ -184,39 +211,58 @@ sys_mmap(void)
   argint(4, &fd);
   argaddr(5, &offset);
 
-  if(length == 0)
+  if (length == 0)
     return -1;
 
-  if(offset % PGSIZE != 0)
+  if (offset % PGSIZE != 0)
     return -1;
 
-  if(prot & ~(PROT_READ | PROT_WRITE))
+  if (prot & ~(PROT_READ | PROT_WRITE))
     return -1;
 
-  if(flags != MAP_SHARED && flags != MAP_PRIVATE)
+  if (flags & ~(MAP_SHARED | MAP_PRIVATE | MAP_ANONYMOUS))
     return -1;
 
-  if(fd < 0 || fd >= NOFILE)
+  is_anon = (flags & MAP_ANONYMOUS) != 0;
+  is_shared = (flags & MAP_SHARED) != 0;
+  is_private = (flags & MAP_PRIVATE) != 0;
+
+  if (is_shared && is_private)
     return -1;
 
-  f = p->ofile[fd];
-
-  if(f == 0)
+  if (!is_anon && !is_shared && !is_private)
     return -1;
 
-  for(i = 0; i < NVMA; i++){
-    if(p->vmas[i].used == 0)
+  if (is_anon) {
+    // Anonymous mappings have no backing file and must use fd == -1, offset 0.
+    if (fd != -1 || offset != 0)
+      return -1;
+  } else {
+    if (fd < 0 || fd >= NOFILE)
+      return -1;
+
+    f = p->ofile[fd];
+    if (f == 0 || f->type != FD_INODE)
+      return -1;
+
+    if (!f->readable)
+      return -1;
+
+    if (is_shared && (prot & PROT_WRITE) && !f->writable)
+      return -1;
+  }
+
+  for (i = 0; i < NVMA; i++) {
+    if (p->vmas[i].used == 0)
       break;
   }
 
-  if(i == NVMA)
+  if (i == NVMA)
     return -1;
 
   vma = &p->vmas[i];
-
   vma->addr = mmap_find_addr(p, length);
-
-  if(vma->addr == 0)
+  if (vma->addr == 0)
     return -1;
 
   vma->used = 1;
@@ -224,7 +270,7 @@ sys_mmap(void)
   vma->maplen = PGROUNDUP(length);
   vma->prot = prot;
   vma->flags = flags;
-  vma->file = filedup(f);
+  vma->file = f ? filedup(f) : 0;
   vma->offset = offset;
 
   return vma->addr;
@@ -239,10 +285,10 @@ sys_munmap(void)
   argaddr(0, &addr);
   argaddr(1, &length);
 
-  if(length == 0)
+  if (length == 0)
     return -1;
 
-  if(addr % PGSIZE != 0)
+  if (addr % PGSIZE != 0)
     return -1;
 
   return mmap_unmap(myproc(), addr, length);

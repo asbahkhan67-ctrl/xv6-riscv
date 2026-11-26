@@ -295,43 +295,46 @@ uvmfree(pagetable_t pagetable, uint64 sz)
   freewalk(pagetable);
 }
 
-// Given a parent process's page table, copy
-// its memory into a child's page table.
-// Copies both the page table and the
-// physical memory.
-// returns 0 on success, -1 on failure.
-// frees any allocated pages on failure.
+// Share a parent process's user pages with a newly forked child using
+// Copy-on-Write (COW). Writable pages are marked read-only + PTE_COW in both
+// page tables and only copied when either process writes to them.
+// Returns 0 on success, -1 on failure (freeing any child mappings on error).
 int
 uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
 {
   pte_t *pte;
   uint64 pa, i;
   uint flags;
+  int downgraded = 0;
 
-  for(i = 0; i < sz; i += PGSIZE){
-    if((pte = walk(old, i, 0)) == 0)
+  for (i = 0; i < sz; i += PGSIZE) {
+    if ((pte = walk(old, i, 0)) == 0)
       continue; // page table entry hasn't been allocated
-    if((*pte & PTE_V) == 0)
+    if ((*pte & PTE_V) == 0)
       continue; // physical page hasn't been allocated
 
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
 
-    // If the page was writable, make it read-only
-    // and mark it as Copy-on-Write.
-    if(flags & PTE_W){
+    // Downgrade writable pages to read-only + COW so writes trigger a fault.
+    if (flags & PTE_W) {
       flags = (flags & ~PTE_W) | PTE_COW;
       *pte = (*pte & ~PTE_W) | PTE_COW;
+      downgraded = 1;
     }
 
-    // Parent and child now share the same physical page.
-    incref((void*)pa);
+    // Both parent and child now share this physical frame.
+    incref((void *)pa);
 
-    if(mappages(new, i, PGSIZE, pa, flags) != 0){
-      decref((void*)pa);
+    if (mappages(new, i, PGSIZE, pa, flags) != 0) {
+      decref((void *)pa);
       goto err;
     }
   }
+
+  // Flush stale writable TLB entries in the parent after marking pages COW.
+  if (downgraded)
+    sfence_vma();
 
   return 0;
 
@@ -369,14 +372,12 @@ copyout(pagetable_t pagetable, uint64 psz, uint64 dstva, char *src, uint64 len)
 
     pa0 = walkaddr(pagetable, va0);
     if (pa0 == 0) {
-    pa0 = vmfault(pagetable, psz, va0, 0);
-
-    if(pa0 == 0)
-    pa0 = mmapfault(pagetable, va0, 0);
-
-    if(pa0 == 0)
-    return -1;
-}
+      pa0 = vmfault(pagetable, psz, va0, 0);
+      if (pa0 == 0)
+        pa0 = mmapfault(pagetable, va0, 0);
+      if (pa0 == 0)
+        return -1;
+    }
 
     pte = walk(pagetable, va0, 0);
     if (pte == 0 || (*pte & PTE_V) == 0)
@@ -420,14 +421,12 @@ copyin(pagetable_t pagetable, uint64 psz, char *dst, uint64 srcva, uint64 len)
     va0 = PGROUNDDOWN(srcva);
     pa0 = walkaddr(pagetable, va0);
     if (pa0 == 0) {
-  pa0 = vmfault(pagetable, psz, va0, 1);
-
-  if(pa0 == 0)
-    pa0 = mmapfault(pagetable, va0, 1);
-
-  if(pa0 == 0)
-    return -1;
-}
+      pa0 = vmfault(pagetable, psz, va0, 1);
+      if (pa0 == 0)
+        pa0 = mmapfault(pagetable, va0, 1);
+      if (pa0 == 0)
+        return -1;
+    }
     n = PGSIZE - (srcva - va0);
     if (n > len)
       n = len;
@@ -455,9 +454,11 @@ copyinstr(pagetable_t pagetable, uint64 psz, char *dst, uint64 srcva,
     va0 = PGROUNDDOWN(srcva);
     pa0 = walkaddr(pagetable, va0);
     if (pa0 == 0) {
-      if ((pa0 = vmfault(pagetable, psz, va0, 1)) == 0) {
+      pa0 = vmfault(pagetable, psz, va0, 1);
+      if (pa0 == 0)
+        pa0 = mmapfault(pagetable, va0, 1);
+      if (pa0 == 0)
         return -1;
-      }
     }
     n = PGSIZE - (srcva - va0);
     if (n > max)
@@ -527,6 +528,10 @@ ismapped(pagetable_t pagetable, uint64 va)
 }
 
 
+// Resolve a Copy-on-Write store page fault at virtual address va.
+// If this process is the sole owner of the frame, re-enable write access
+// in place; otherwise allocate a private 4 KB copy and drop the old ref.
+// Returns the writable physical address on success, or 0 if not a COW fault.
 uint64
 cowalloc(pagetable_t pagetable, uint64 va)
 {
@@ -534,46 +539,56 @@ cowalloc(pagetable_t pagetable, uint64 va)
   uint64 pa;
   uint flags;
   char *mem;
+  struct proc *p;
 
-  if(va >= MAXVA)
+  if (va >= MAXVA)
     return 0;
 
   va = PGROUNDDOWN(va);
 
-  if((pte = walk(pagetable, va, 0)) == 0)
+  if ((pte = walk(pagetable, va, 0)) == 0)
     return 0;
-
-  if((*pte & PTE_V) == 0)
+  if ((*pte & PTE_V) == 0 || (*pte & PTE_U) == 0)
     return 0;
-
-  if((*pte & PTE_COW) == 0)
+  if ((*pte & PTE_COW) == 0)
     return 0;
 
   pa = PTE2PA(*pte);
   flags = PTE_FLAGS(*pte);
+  p = myproc();
 
-  // If this is the only reference, we don't need to copy.
-  if(getref((void*)pa) == 1){
+  // Sole remaining owner: restore write permission in place (no copy needed).
+  if (getref((void *)pa) == 1) {
     *pte = PA2PTE(pa) | ((flags | PTE_W) & ~PTE_COW);
+    sfence_vma();
+    if (p)
+      p->cow_faults++;
     return pa;
   }
 
-  // More than one process is sharing the page.
+  // Frame is still shared: allocate a private 4 KB copy for this process.
   mem = kalloc();
-  if(mem == 0)
+  if (mem == 0)
     return 0;
 
-  memmove(mem, (char*)pa, PGSIZE);
+  memmove(mem, (char *)pa, PGSIZE);
 
   flags = (flags | PTE_W) & ~PTE_COW;
   *pte = PA2PTE((uint64)mem) | flags;
+  sfence_vma();
 
-  decref((void*)pa);
+  decref((void *)pa);
+
+  if (p)
+    p->cow_faults++;
 
   return (uint64)mem;
 }
 
-
+// Demand-page handler for memory-mapped regions (file-backed or MAP_ANONYMOUS).
+// Allocates a single 4 KB page on first access, fills it from the backing file
+// (or leaves it zero-filled for anonymous mappings), and maps it into the PTE.
+// Returns the physical address on success, or 0 if va is not in a valid VMA.
 uint64
 mmapfault(pagetable_t pagetable, uint64 va, int read)
 {
@@ -582,52 +597,53 @@ mmapfault(pagetable_t pagetable, uint64 va, int read)
   uint64 mem;
   uint64 offset;
   int perm;
-  int n;
 
   va = PGROUNDDOWN(va);
 
-  for(int i = 0; i < NVMA; i++){
+  for (int i = 0; i < NVMA; i++) {
     vma = &p->vmas[i];
 
-    if(vma->used == 0)
+    if (vma->used == 0)
       continue;
 
-    if(va >= vma->addr && va < vma->addr + vma->maplen){
-      if(read && !(vma->prot & PROT_READ))
+    if (va >= vma->addr && va < vma->addr + vma->maplen) {
+      if (read && !(vma->prot & PROT_READ))
+        return 0;
+      if (!read && !(vma->prot & PROT_WRITE))
         return 0;
 
-      if(!read && !(vma->prot & PROT_WRITE))
-        return 0;
-
-      if(ismapped(pagetable, va))
+      if (ismapped(pagetable, va))
         return walkaddr(pagetable, va);
 
       mem = (uint64)kalloc();
-      if(mem == 0)
+      if (mem == 0)
         return 0;
 
       memset((void *)mem, 0, PGSIZE);
 
-      offset = vma->offset + (va - vma->addr);
+      // File-backed mapping: load the corresponding 4 KB slice from disk.
+      // Anonymous mapping (MAP_ANONYMOUS): keep the zero-filled page as-is.
+      if (!(vma->flags & MAP_ANONYMOUS) && vma->file != 0) {
+        int n;
+        offset = vma->offset + (va - vma->addr);
 
-      ilock(vma->file->ip);
-      n = readi(vma->file->ip, 0, mem, offset, PGSIZE);
-      iunlock(vma->file->ip);
+        ilock(vma->file->ip);
+        n = readi(vma->file->ip, 0, mem, offset, PGSIZE);
+        iunlock(vma->file->ip);
 
-      if(n < 0){
-        kfree((void *)mem);
-        return 0;
+        if (n < 0) {
+          kfree((void *)mem);
+          return 0;
+        }
       }
 
       perm = PTE_U;
-
-      if(vma->prot & PROT_READ)
+      if (vma->prot & PROT_READ)
         perm |= PTE_R;
-
-      if(vma->prot & PROT_WRITE)
+      if (vma->prot & PROT_WRITE)
         perm |= PTE_W;
 
-      if(mappages(pagetable, va, PGSIZE, mem, perm) != 0){
+      if (mappages(pagetable, va, PGSIZE, mem, perm) != 0) {
         kfree((void *)mem);
         return 0;
       }
@@ -639,8 +655,9 @@ mmapfault(pagetable_t pagetable, uint64 va, int read)
   return 0;
 }
 
-
-
+// Unmap [addr, addr + length) from one of process p's VMA slots.
+// For MAP_SHARED file mappings, modified pages are written back to disk first.
+// Supports full unmap or trimming from either the start or end of a VMA.
 int
 mmap_unmap(struct proc *p, uint64 addr, uint64 length)
 {
@@ -652,40 +669,40 @@ mmap_unmap(struct proc *p, uint64 addr, uint64 length)
 
   length = PGROUNDUP(length);
 
-  for(int i = 0; i < NVMA; i++){
-    if(p->vmas[i].used &&
-       addr >= p->vmas[i].addr &&
-       addr < p->vmas[i].addr + p->vmas[i].maplen){
+  for (int i = 0; i < NVMA; i++) {
+    if (p->vmas[i].used &&
+        addr >= p->vmas[i].addr &&
+        addr < p->vmas[i].addr + p->vmas[i].maplen) {
       vma = &p->vmas[i];
       break;
     }
   }
 
-  if(vma == 0)
+  if (vma == 0)
     return -1;
 
   end = addr + length;
-
-  if(addr != vma->addr &&
-     end != vma->addr + vma->maplen)
+  if (end <= addr || end > vma->addr + vma->maplen)
     return -1;
 
-  for(a = addr; a < end; a += PGSIZE){
-    pte = walk(p->pagetable, a, 0);
+  // Only whole-VMA unmaps or edge trims (no splitting into two VMAs).
+  if (addr != vma->addr && end != vma->addr + vma->maplen)
+    return -1;
 
-    if(pte == 0 || (*pte & PTE_V) == 0)
+  for (a = addr; a < end; a += PGSIZE) {
+    pte = walk(p->pagetable, a, 0);
+    if (pte == 0 || (*pte & PTE_V) == 0)
       continue;
 
     pa = PTE2PA(*pte);
 
-    if(vma->flags == MAP_SHARED){
+    // Persist dirty data for shared file-backed mappings only.
+    if ((vma->flags & MAP_SHARED) && !(vma->flags & MAP_ANONYMOUS) &&
+        vma->file != 0) {
       uint64 fileoff = vma->offset + (a - vma->addr);
-      uint64 remaining;
-
-      if(a - vma->addr < vma->length){
-        remaining = vma->length - (a - vma->addr);
-
-        if(remaining > PGSIZE)
+      if (a - vma->addr < vma->length) {
+        uint64 remaining = vma->length - (a - vma->addr);
+        if (remaining > PGSIZE)
           remaining = PGSIZE;
 
         begin_op();
@@ -700,22 +717,25 @@ mmap_unmap(struct proc *p, uint64 addr, uint64 length)
     *pte = 0;
   }
 
-  if(addr == vma->addr && end == vma->addr + vma->maplen){
-    fileclose(vma->file);
+  sfence_vma();
+
+  if (addr == vma->addr && end == vma->addr + vma->maplen) {
+    if (vma->file)
+      fileclose(vma->file);
     memset(vma, 0, sizeof(*vma));
     return 0;
   }
 
-  if(addr == vma->addr){
+  if (addr == vma->addr) {
     vma->addr = end;
     vma->offset += length;
-    vma->length -= length;
+    vma->length = (length >= vma->length) ? 0 : (vma->length - length);
     vma->maplen -= length;
     return 0;
   }
 
-  if(end == vma->addr + vma->maplen){
-    vma->length -= length;
+  if (end == vma->addr + vma->maplen) {
+    vma->length = (length >= vma->length) ? 0 : (vma->length - length);
     vma->maplen -= length;
     return 0;
   }
@@ -723,11 +743,12 @@ mmap_unmap(struct proc *p, uint64 addr, uint64 length)
   return -1;
 }
 
+// Release all active memory mappings belonging to process p (on exit or exec).
 void
 mmap_cleanup(struct proc *p)
 {
-  for(int i = 0; i < NVMA; i++){
-    if(p->vmas[i].used)
+  for (int i = 0; i < NVMA; i++) {
+    if (p->vmas[i].used)
       mmap_unmap(p, p->vmas[i].addr, p->vmas[i].maplen);
   }
 }

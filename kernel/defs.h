@@ -111,6 +111,8 @@ int             either_copyin(void *dst, int user_src, uint64 src, uint64 len);
 void            procdump(void);
 void            proctree(void);
 int             setpriority(int, int);
+int             getpriority(int);
+int             getcowfaults_proc(int);
 uint64          nproc_active(void);
 int             kgetppid(void);
 int             getsyscallcount_proc(int);

@@ -118,6 +118,8 @@ extern uint64 sys_reboot(void);
 extern uint64 sys_sched_yield(void);
 extern uint64 sys_getcpuid(void);
 extern uint64 sys_setprocname(void);
+extern uint64 sys_getpriority(void);
+extern uint64 sys_getcowfaults(void);
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
@@ -160,6 +162,8 @@ static uint64 (*syscalls[])(void) = {
   [SYS_sched_yield]     = sys_sched_yield,
   [SYS_getcpuid]        = sys_getcpuid,
   [SYS_setprocname]     = sys_setprocname,
+  [SYS_getpriority]     = sys_getpriority,
+  [SYS_getcowfaults]    = sys_getcowfaults,
   // clang-format on
 };
 
@@ -202,6 +206,8 @@ static char *syscall_names[] = {
   [SYS_sched_yield]     = "sched_yield",
   [SYS_getcpuid]        = "getcpuid",
   [SYS_setprocname]     = "setprocname",
+  [SYS_getpriority]     = "getpriority",
+  [SYS_getcowfaults]    = "getcowfaults",
   // clang-format on
 };
 

@@ -123,13 +123,16 @@ allocproc(void)
 
 found:
   p->pid = allocpid();
-  p->priority = 10;
+  p->priority = PRIO_DEFAULT;
   p->cpu_time = 0;
+  p->user_ticks = 0;
+  p->kernel_ticks = 0;
+  p->cow_faults = 0;
   p->trace_mask = 0;
   p->syscall_count = 0;
   p->ctime = ticks;
   p->last_run_tick = ticks;
-  for(int i = 0; i < NVMA; i++)
+  for (int i = 0; i < NVMA; i++)
     memset(&p->vmas[i], 0, sizeof(p->vmas[i]));
   p->state = USED;
 
@@ -173,6 +176,9 @@ freeproc(struct proc *p)
   p->pid = 0;
   p->priority = 0;
   p->cpu_time = 0;
+  p->user_ticks = 0;
+  p->kernel_ticks = 0;
+  p->cow_faults = 0;
   p->trace_mask = 0;
   p->syscall_count = 0;
   p->ctime = 0;
@@ -291,10 +297,12 @@ kfork(void)
   np->sz = p->sz;
   np->trace_mask = p->trace_mask;
 
-  for(i = 0; i < NVMA; i++){
-    if(p->vmas[i].used){
+  // Inherit active memory mappings (duplicate file handle only if file-backed).
+  for (i = 0; i < NVMA; i++) {
+    if (p->vmas[i].used) {
       np->vmas[i] = p->vmas[i];
-      np->vmas[i].file = filedup(p->vmas[i].file);
+      if (p->vmas[i].file)
+        np->vmas[i].file = filedup(p->vmas[i].file);
     }
   }
 
@@ -512,6 +520,7 @@ kwaitx(uint64 addr, uint64 wtime_addr, uint64 rtime_addr)
 }
 
 // Per-CPU process scheduler with priority selection and priority aging.
+// Lower priority numbers run first (PRIO_MIN=1 highest .. PRIO_MAX=20 lowest).
 void
 scheduler(void)
 {
@@ -523,27 +532,29 @@ scheduler(void)
 
   c->proc = 0;
 
-  for(;;){
+  for (;;) {
+    // Allow interrupts while scanning so devices and timers stay responsive.
     intr_on();
 
     best = 0;
-    best_eff_prio = 21;
+    best_eff_prio = PRIO_MAX + 1;
     best_waited = 0;
     uint64 now = ticks;
 
-    for(p = proc; p < &proc[NPROC]; p++){
+    // Scan the process table and keep p->lock held only on the current best pick.
+    for (p = proc; p < &proc[NPROC]; p++) {
       acquire(&p->lock);
 
-      if(p->state == RUNNABLE){
+      if (p->state == RUNNABLE) {
         uint64 waited = (now > p->last_run_tick) ? (now - p->last_run_tick) : 0;
         uint64 boost = waited / AGING_THRESHOLD;
         int eff_prio = p->priority - (int)boost;
-        if(eff_prio < 1)
-          eff_prio = 1;
+        if (eff_prio < PRIO_MIN)
+          eff_prio = PRIO_MIN;
 
-        if(best == 0 || eff_prio < best_eff_prio ||
-           (eff_prio == best_eff_prio && waited > best_waited)){
-          if(best != 0)
+        if (best == 0 || eff_prio < best_eff_prio ||
+            (eff_prio == best_eff_prio && waited > best_waited)) {
+          if (best != 0)
             release(&best->lock);
 
           best = p;
@@ -557,7 +568,8 @@ scheduler(void)
       }
     }
 
-    if(best != 0){
+    // Switch CPU context to the winning process if one is runnable.
+    if (best != 0) {
       best->state = RUNNING;
       c->proc = best;
 
@@ -773,9 +785,52 @@ either_copyin(void *dst, int user_src, uint64 src, uint64 len)
   }
 }
 
-// Print a process listing to console.  For debugging.
-// Runs when user types ^P on console.
-// No lock to avoid wedging a stuck machine further.
+// Convert an unsigned 64-bit integer to decimal in buf and return its length.
+static int
+uint_to_str(uint64 val, char *buf)
+{
+  char tmp[24];
+  int len = 0;
+
+  do {
+    tmp[len++] = '0' + (val % 10);
+    val /= 10;
+  } while (val > 0);
+
+  for (int i = 0; i < len; i++)
+    buf[i] = tmp[len - 1 - i];
+  buf[len] = '\0';
+  return len;
+}
+
+// Print a string left-aligned to a fixed column width (xv6 printk lacks %-Ns).
+static void
+print_col(const char *s, int width)
+{
+  int len = strlen(s);
+
+  printk("%s", (char *)s);
+  if (len < width) {
+    for (int i = len; i < width; i++)
+      printk(" ");
+  } else {
+    printk(" ");
+  }
+}
+
+// Print an unsigned integer left-aligned to a fixed column width.
+static void
+print_uint_col(uint64 val, int width)
+{
+  char buf[24];
+
+  uint_to_str(val, buf);
+  print_col(buf, width);
+}
+
+// Print a formatted table of all active processes to the console.
+// Used by both the 'ps' command and the Ctrl+P console shortcut.
+// Intentionally lock-free so Ctrl+P still works if a lock is wedged.
 void
 procdump(void)
 {
@@ -783,47 +838,134 @@ procdump(void)
     // clang-format off
     [UNUSED]    = "unused",
     [USED]      = "used",
-    [SLEEPING]  = "sleep ",
+    [SLEEPING]  = "sleep",
     [RUNNABLE]  = "runble",
-    [RUNNING]   = "run   ",
+    [RUNNING]   = "run",
     [ZOMBIE]    = "zombie"
     // clang-format on
   };
   struct proc *p;
   char *state;
+  int active_count = 0;
+  uint64 total_mem_kb = 0;
 
-  printk("\n");
+  printk("PID   PRIO  CPU (U/K)       MEM-KB  STATE   NAME\n");
+  printk("----  ----  --------------  ------  ------  ----------------\n");
+
   for (p = proc; p < &proc[NPROC]; p++) {
     if (p->state == UNUSED)
       continue;
+
     if (p->state >= 0 && p->state < NELEM(states) && states[p->state])
       state = states[p->state];
     else
       state = "???";
-    printk("%d\t%d\t%lu\t%s\t%s",
-       p->pid,
-       p->priority,
-       p->cpu_time,
-       state,
-       p->name);
-    printk("\n");
+
+    // Build "total (user/kernel)" CPU tick string.
+    char cpubuf[72];
+    int pos = 0;
+    pos += uint_to_str(p->cpu_time, cpubuf + pos);
+    cpubuf[pos++] = ' ';
+    cpubuf[pos++] = '(';
+    pos += uint_to_str(p->user_ticks, cpubuf + pos);
+    cpubuf[pos++] = '/';
+    pos += uint_to_str(p->kernel_ticks, cpubuf + pos);
+    cpubuf[pos++] = ')';
+    cpubuf[pos] = '\0';
+
+    // Convert user memory size from bytes to KB (rounding up partial KB).
+    uint64 mem_kb = (p->sz + 1023) / 1024;
+    total_mem_kb += mem_kb;
+    active_count++;
+
+    print_uint_col(p->pid, 6);
+    print_uint_col(p->priority, 6);
+    print_col(cpubuf, 16);
+    print_uint_col(mem_kb, 8);
+    print_col(state, 8);
+    printk("%s\n", p->name);
   }
+
+  printk("------------------------------------------------------------\n");
+  printk("Active processes: %d | Total process memory: %lu KB\n",
+         active_count, total_mem_kb);
 }
 
+// Update the scheduling priority of process 'pid' (pid == 0 targets caller).
+// Returns 0 on success, -1 if no active process matches 'pid'.
 int
 setpriority(int pid, int priority)
 {
   struct proc *p;
 
-  for(p = proc; p < &proc[NPROC]; p++){
+  if (pid == 0) {
+    p = myproc();
     acquire(&p->lock);
+    p->priority = priority;
+    release(&p->lock);
+    return 0;
+  }
 
-    if(p->pid == pid){
+  for (p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
+    if (p->state != UNUSED && p->pid == pid) {
       p->priority = priority;
       release(&p->lock);
       return 0;
     }
+    release(&p->lock);
+  }
 
+  return -1;
+}
+
+// Query the base scheduling priority of process 'pid' (pid == 0 targets caller).
+// Returns priority (PRIO_MIN..PRIO_MAX) on success, or -1 if not found.
+int
+getpriority(int pid)
+{
+  struct proc *p;
+  int prio;
+
+  if (pid == 0) {
+    p = myproc();
+    acquire(&p->lock);
+    prio = p->priority;
+    release(&p->lock);
+    return prio;
+  }
+
+  for (p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
+    if (p->state != UNUSED && p->pid == pid) {
+      prio = p->priority;
+      release(&p->lock);
+      return prio;
+    }
+    release(&p->lock);
+  }
+
+  return -1;
+}
+
+// Query how many Copy-on-Write write faults process 'pid' has triggered.
+// Passing pid <= 0 inspects the calling process.
+int
+getcowfaults_proc(int pid)
+{
+  struct proc *p;
+  int count;
+
+  if (pid <= 0)
+    return (int)myproc()->cow_faults;
+
+  for (p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
+    if (p->state != UNUSED && p->pid == pid) {
+      count = (int)p->cow_faults;
+      release(&p->lock);
+      return count;
+    }
     release(&p->lock);
   }
 

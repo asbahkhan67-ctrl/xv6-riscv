@@ -41,6 +41,8 @@ int reboot(void);
 int sched_yield(void);
 int getcpuid(void);
 int setprocname(const char *);
+int getpriority(int);
+int getcowfaults(int);
 
 // ulib.c
 int stat(const char *, struct stat *);

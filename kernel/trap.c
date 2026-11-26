@@ -67,19 +67,19 @@ usertrap(void)
 
     syscall();
   } else if ((which_dev = devintr()) != 0) {
-    // ok
+    // Hardware device or timer interrupt handled.
   } else if (r_scause() == 15 &&
-           cowalloc(p->pagetable, r_stval()) != 0) {
-  // COW page fault handled
-} else if ((r_scause() == 15 || r_scause() == 13) &&
-           mmapfault(p->pagetable, r_stval(),
+             cowalloc(p->pagetable, r_stval()) != 0) {
+    // Store page fault resolved via Copy-on-Write (COW).
+  } else if ((r_scause() == 15 || r_scause() == 13) &&
+             mmapfault(p->pagetable, r_stval(),
+                       (r_scause() == 13) ? 1 : 0) != 0) {
+    // Load/store page fault resolved via lazy mmap demand paging.
+  } else if ((r_scause() == 15 || r_scause() == 13) &&
+             vmfault(p->pagetable, p->sz, r_stval(),
                      (r_scause() == 13) ? 1 : 0) != 0) {
-  // page fault on mmap region
-} else if ((r_scause() == 15 || r_scause() == 13) &&
-           vmfault(p->pagetable, p->sz, r_stval(),
-                   (r_scause() == 13) ? 1 : 0) != 0) {
-  // page fault on lazily-allocated heap memory
-} else {
+    // Load/store page fault resolved via lazy heap (sbrk) allocation.
+  } else {
     printk("usertrap(): unexpected scause 0x%lx pid=%d\n", r_scause(), p->pid);
     printk("            sepc=0x%lx stval=0x%lx\n", r_sepc(), r_stval());
     setkilled(p);
@@ -88,11 +88,13 @@ usertrap(void)
   if (killed(p))
     kexit(-1);
 
-// give up the CPU if this is a timer interrupt.
-if (which_dev == 2){
-  p->cpu_time++;
-  yield();
-}
+  // Timer interrupt while running in user mode:
+  // charge one user tick and give up the CPU slice.
+  if (which_dev == 2) {
+    p->user_ticks++;
+    p->cpu_time++;
+    yield();
+  }
 
   prepare_return();
 
@@ -162,11 +164,13 @@ kerneltrap()
     panic("kerneltrap");
   }
 
-// give up the CPU if this is a timer interrupt.
-if (which_dev == 2 && myproc() != 0){
-  myproc()->cpu_time++;
-  yield();
-}
+  // Timer interrupt while running in kernel mode:
+  // charge one kernel tick and give up the CPU slice.
+  if (which_dev == 2 && myproc() != 0) {
+    myproc()->kernel_ticks++;
+    myproc()->cpu_time++;
+    yield();
+  }
   // the yield() may have caused some traps to occur,
   // so restore trap registers for use by kernelvec.S's sepc instruction.
   w_sepc(sepc);

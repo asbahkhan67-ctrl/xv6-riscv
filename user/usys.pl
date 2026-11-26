@@ -58,3 +58,5 @@ entry("reboot");
 entry("sched_yield");
 entry("getcpuid");
 entry("setprocname");
+entry("getpriority");
+entry("getcowfaults");

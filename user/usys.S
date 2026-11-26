@@ -185,3 +185,13 @@ setprocname:
  li a7, SYS_setprocname
  ecall
  ret
+.global getpriority
+getpriority:
+ li a7, SYS_getpriority
+ ecall
+ ret
+.global getcowfaults
+getcowfaults:
+ li a7, SYS_getcowfaults
+ ecall
+ ret

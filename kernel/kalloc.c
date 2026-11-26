@@ -9,6 +9,8 @@
 #include "riscv.h"
 #include "defs.h"
 
+// Per-page reference counts used by Copy-on-Write (COW) fork.
+// A physical frame is only returned to the free list when its count reaches 0.
 struct {
   struct spinlock lock;
   int refcnt[PHYSTOP / PGSIZE];
@@ -112,9 +114,13 @@ kalloc(void)
   return (void*)r;
 }
 
+// Increment the reference count of a shared physical page (used by COW fork).
 void
 incref(void *pa)
 {
+  if (((uint64)pa % PGSIZE) != 0 || (char *)pa < end || (uint64)pa >= PHYSTOP)
+    panic("incref");
+
   int index = (uint64)pa / PGSIZE;
 
   acquire(&ref.lock);
@@ -122,9 +128,13 @@ incref(void *pa)
   release(&ref.lock);
 }
 
+// Read the current reference count of a physical page.
 int
 getref(void *pa)
 {
+  if (((uint64)pa % PGSIZE) != 0 || (char *)pa < end || (uint64)pa >= PHYSTOP)
+    panic("getref");
+
   int index = (uint64)pa / PGSIZE;
   int count;
 
@@ -135,6 +145,7 @@ getref(void *pa)
   return count;
 }
 
+// Drop one reference to a physical page (frees it automatically if count hits 0).
 void
 decref(void *pa)
 {

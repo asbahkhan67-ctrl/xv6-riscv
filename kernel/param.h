@@ -13,8 +13,13 @@
 #define MAXPATH         128               // maximum file path name
 #define USERSTACK       1                 // user stack pages
 #define AGING_THRESHOLD 10                // ticks before priority aging boost
+#define PRIO_MIN        1                 // highest scheduling priority
+#define PRIO_DEFAULT    10                // default process priority
+#define PRIO_MAX        20                // lowest scheduling priority
+
 #define PROT_READ       0x1
 #define PROT_WRITE      0x2
 
-#define MAP_SHARED  0x1
-#define MAP_PRIVATE 0x2
+#define MAP_SHARED      0x1
+#define MAP_PRIVATE     0x2
+#define MAP_ANONYMOUS   0x4               // zero-filled mapping without a file

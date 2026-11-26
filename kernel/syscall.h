@@ -36,3 +36,5 @@
 #define SYS_sched_yield     35
 #define SYS_getcpuid        36
 #define SYS_setprocname     37
+#define SYS_getpriority     38
+#define SYS_getcowfaults    39

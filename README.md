@@ -25,11 +25,11 @@ The implementation targets **64-bit RISC-V (`rv64gc`)** and runs on **QEMU (`vir
 
 | # | Core Kernel Module | Mini-Extension (Additional Functionality) |
 | -: | :--- | :--- |
-| **1** | **Process inspection with `ps`** | Per-process memory footprint column (`MEM-KB` via `p->sz`) & total RAM summary |
-| **2** | **Priority-based CPU scheduling (`setpriority`)** | Priority query syscall (`getpriority`) & self-targeting (`pid = 0`) with old → new log |
-| **3** | **Per-process CPU-time accounting** | User-mode vs. kernel-mode CPU tick split (`user_ticks` & `kernel_ticks`) |
-| **4** | **Copy-on-Write (COW) memory management** | Per-process COW write-fault counter (`cow_faults`) & shared-page savings stats |
-| **5** | **Memory mapping with `mmap()` and `munmap()`** | Anonymous zero-filled mappings (`MAP_ANONYMOUS` without a backing file) |
+| **1** | **Process list (`ps`)** | Shows each program's memory size (`MEM-KB`) and total memory used |
+| **2** | **Priority CPU scheduler (`setpriority`)** | Check priority (`getpriority`) and use `pid = 0` to target yourself |
+| **3** | **CPU time tracking (`cpuburn`)** | Splits CPU time into user work vs. kernel work (`U/K` ticks) |
+| **4** | **Copy-on-Write memory (COW)** | Counts how many pages actually had to be copied (`cow_faults`) |
+| **5** | **Memory mapping (`mmap` & `munmap`)** | Anonymous zero-filled memory (`MAP_ANONYMOUS`) without needing a file |
 | **6** | **System call tracing with `trace()` and `strace`** | Error-only filtering (`strace -e`) & post-run syscall summary table (`strace -c`) |
 | **7** | **System resource diagnostics (`sysinfo` & `free`)** | Human-readable MB / `%` mode (`free -m`) + open file & shared COW page counts |
 | **8** | **Parent process inspection (`getppid` & `pstree`)** | Targeted subtree root filtering (`pstree [pid]`) & per-node child count badge |
@@ -165,46 +165,49 @@ flowchart TD
 
 ---
 
-# 1. Process Inspection — `ps`
+# 1. Process List — `ps`
 
-The `ps()` system call (`SYS_ps = 23`) inspects all active slots in the kernel process table (`proc[NPROC]`) and prints a formatted summary directly to the console.
+### In Simple Words
+
+`ps` works like a lightweight **Task Manager** inside our operating system. Whenever you run `ps`, the kernel checks all 64 process slots, skips the empty ones, and prints a clean, aligned table of every active program along with its priority, CPU time, memory size, state, and name.
 
 ```mermaid
 flowchart TD
-    subgraph User["User Space"]
-        U1["1. User runs 'ps' command"]
-    end
-
-    subgraph Kernel["Kernel Space (sysproc.c -> proc.c)"]
-        K1["2. Trap into Kernel via ecall (SYS_ps = 23)"]
-        K2["3. procdump() iterates through proc[0 .. 63]"]
-        K3{"4. Is slot UNUSED?"}
-        K4["Skip empty slot"]
-        K5["5. Read PID, Priority, CPU Ticks, State, and Name"]
-        K5M["Mini-Extension: Compute per-process memory (p->sz / 1024 KB) & sum total"]
-        K6["6. Print formatted process row + MEM-KB column via printk()"]
-    end
-
-    U1 --> K1 --> K2 --> K3
-    K3 -- "Yes" --> K4 --> K2
-    K3 -- "No (Active)" --> K5 --> K5M --> K6 --> K2
+    A["1. User types 'ps'"] --> B["2. Request enters the kernel"]
+    B --> C["3. Check each of the 64 process slots"]
+    C --> D{"Is this slot active?"}
+    D -- "No (empty)" --> C
+    D -- "Yes" --> E["4. Read PID, Priority, CPU Time, State, Name"]
+    E --> F["5. Bonus: Calculate memory in KB and add to total"]
+    F --> G["6. Print one aligned row in the table"]
+    G --> C
+    C -- "Finished all 64 slots" --> H["7. Print active process count and total memory"]
 ```
 
-### Displayed Information
+### How It Works
+
+* **User command (`user/ps.c`):** Calls our `ps()` system call (`SYS_ps = 23`).
+* **Kernel table scan (`kernel/proc.c`):** `procdump()` loops through all 64 slots in the process table, skips unused slots, and prints neat fixed-width columns so the output always lines up cleanly.
+* **Safe for debugging:** `procdump()` also powers the `Ctrl+P` shortcut, so it reads process info without blocking on locks.
+
+### Mini-Extension: Memory Size Column (`MEM-KB`) & Total Summary
+
+* Converts each active process's memory size into kilobytes (`MEM-KB`) and adds a summary footer showing the **total number of active processes** and **total memory used**, making it easy to spot heavy programs at a glance.
+
+### Live Demo & Output
 
 ```text
-PID   PRIORITY   CPU-TICKS   MEM-KB   STATE     NAME
-1     10         2           16       sleep     init
-2     10         5           20       sleep     sh
-3     10         0           16       run       ps
-Total active process memory: 52 KB
+$ ps
+PID   PRIO  CPU (U/K)       MEM-KB  STATE   NAME
+----  ----  --------------  ------  ------  ----------------
+1     10    0 (0/0)         16      sleep   init
+2     10    0 (0/0)         20      sleep   sh
+3     10    0 (0/0)         16      run     ps
+------------------------------------------------------------
+Active processes: 3 | Total process memory: 52 KB
 ```
 
-### Mini-Extension: Per-Process Memory Usage (`MEM-KB`)
-
-* Extends `procdump()` to inspect each active process's address-space size (`p->sz` in bytes) and convert it into kilobytes (`MEM-KB`) alongside a cumulative user-memory footer, making it easy to spot memory-heavy processes directly from `ps`.
-
-### Relevant Files
+### Key Files
 
 * `kernel/syscall.h`, `kernel/syscall.c`, `kernel/sysproc.c`, `kernel/proc.c`, `user/ps.c`
 
@@ -212,183 +215,228 @@ Total active process memory: 52 KB
 
 # 2. Priority-Based CPU Scheduler — `setpriority`
 
-NexusXv6 replaces plain round-robin selection with a **priority-aware scheduler** supporting levels `1` (highest priority) through `20` (lowest priority). New processes start at default priority `10`.
+### In Simple Words
+
+Default xv6 gives every ready program an equal turn (round-robin). Our priority scheduler lets **more important programs run first**. Every process gets a priority number from **1 (highest priority)** to **20 (lowest priority)**, starting at **10** by default. Whenever the CPU chooses the next task, it picks the ready process with the **smallest priority number**.
 
 ```mermaid
 flowchart TD
-    subgraph Config["User Priority Control & Mini-Extension"]
-        P_GET["Mini-Extension: getpriority(pid) queries current base priority (pid=0 for self)"]
-        P_SET["setpriority(pid, new_prio) validates 1..20 & logs old -> new transition"]
-        P_GET --> P_SET
+    subgraph UserControl["Checking or Changing Priority"]
+        U1["Check priority: setpriority pid"] --> U2["Change priority: setpriority pid 1..20"]
+        U2 --> U3{"Is priority between 1 and 20?"}
+        U3 -- "No" --> U4["Reject safely with an error message"]
+        U3 -- "Yes" --> U5["Save new priority and show old -> new"]
     end
 
-    subgraph Sched["Kernel Priority Scheduler (proc.c)"]
-        S1["1. Per-CPU scheduler() scans all entries in proc[64]"]
-        S2{"2. Is process RUNNABLE?"}
-        S3["3. Compare priority (1 = Highest, 10 = Default, 20 = Lowest)"]
-        S4["4. Keep spinlock on highest-priority candidate"]
-        S5["5. Context-switch via swtch() to winning process"]
+    subgraph Scheduler["How the Scheduler Picks Who Runs Next"]
+        S1["1. Scan all 64 processes"] --> S2{"2. Is the process ready to run?"}
+        S2 -- "No" --> S1
+        S2 -- "Yes" --> S3["3. Pick the process with the lowest number (1 = highest)"]
+        S3 --> S4["4. Switch the CPU to the winning process"]
+        S4 --> S1
     end
 
-    P_SET -. "Updates p->priority" .-> S3
-    S1 --> S2
-    S2 -- "No" --> S1
-    S2 -- "Yes" --> S3 --> S4 --> S5 --> S1
+    U5 -. "New priority takes effect next round" .-> S3
 ```
 
-### Changing & Querying Priority
+### How It Works
+
+* **Every process stores a priority (`kernel/proc.h`):** New processes automatically start at priority `10` (`PRIO_DEFAULT`).
+* **Smart selection (`kernel/proc.c`):** `scheduler()` checks every ready (`RUNNABLE`) process and gives the CPU to the one with the highest priority (lowest number).
+* **Safe input checks (`kernel/sysproc.c`):** Any priority outside `1..20` or invalid PID is safely rejected without crashing the system.
+
+### Mini-Extension: Check Priority (`getpriority`) & Self Shortcut (`pid = 0`)
+
+* Adds a `getpriority(pid)` system call so you can check a process's priority anytime (`setpriority <pid>`), supports passing **`0`** to check or update your own process, and prints the **old → new** change clearly.
+
+### Live Demo & Output
 
 ```text
+$ setpriority 2
+Process 2 current priority: 10
+
 $ setpriority 2 5
 Process 2 priority changed: 10 -> 5
+
+$ setpriority 0
+Process 6 (self) current priority: 10
+
+$ setpriority 2 25
+setpriority: failed (priority must be between 1 and 20)
 ```
 
-Values outside `1..20` are safely rejected with `-1` in `sys_setpriority()`.
+### Key Files
 
-### Mini-Extension: Priority Inspection (`getpriority`) & Self-Targeting (`pid = 0`)
-
-* Adds a companion `getpriority(int pid)` system call and supports passing `pid = 0` in both `getpriority` and `setpriority` to inspect or adjust the calling process's own priority without needing `getpid()`, while reporting the previous priority before applying changes.
-
-### Relevant Files
-
-* `kernel/proc.h`, `kernel/proc.c`, `kernel/sysproc.c`, `user/setpriority.c`
+* `kernel/param.h`, `kernel/proc.h`, `kernel/proc.c`, `kernel/sysproc.c`, `user/setpriority.c`
 
 ---
 
-# 3. Per-Process CPU-Time Accounting
+# 3. Per-Process CPU Time Tracking — `cpuburn`
 
-Every process tracks its cumulative execution ticks in `p->cpu_time` (initialized to `0` in `allocproc()`). Whenever a hardware timer interrupt preempts a running process, its counter increases by `1`.
+### In Simple Words
+
+The computer's hardware timer sends a short "tick" signal regularly (about 10 times per second). Whenever a tick arrives while a program is running on the CPU, our kernel adds **`+1`** to that program's CPU counter. This makes it easy to measure how much CPU time each program is using — and we also provide a `cpuburn` helper tool to generate CPU load during demos.
 
 ```mermaid
 flowchart TD
-    subgraph Hardware["RISC-V Hardware"]
-        H1["1. CLINT Hardware Timer fires (~100 ms tick)"]
-    end
-
-    subgraph Kernel["Kernel Trap Handler (trap.c)"]
-        T1["2. devintr() identifies timer interrupt (returns 2)"]
-        T2{"3. Interrupted privilege mode?"}
-        TU["Mini-Extension (User Mode): Increment p->user_ticks++ in usertrap()"]
-        TK["Mini-Extension (Kernel Mode): Increment p->kernel_ticks++ in kerneltrap()"]
-        T3["4. Update total p->cpu_time = user_ticks + kernel_ticks"]
-        T4["5. Preempt current slice via yield()"]
-    end
-
-    subgraph Consumers["User-Space Visibility"]
-        C1["Exposed live in 'ps' and returned on exit via 'waitx()' / 'time'"]
-    end
-
-    H1 --> T1 --> T2
-    T2 -- "User Space" --> TU --> T3
-    T2 -- "Supervisor Space" --> TK --> T3
-    T3 --> T4
-    T3 -. "Queried by" .-> C1
+    A["1. Hardware timer ticks (~10 times per second)"] --> B{"2. Where was the program running?"}
+    B -- "Inside the user program" --> C["Add +1 to User Ticks"]
+    B -- "Inside the OS kernel" --> D["Add +1 to Kernel Ticks"]
+    C --> E["3. Add +1 to Total CPU Ticks"]
+    D --> E
+    E --> F["4. Pause process so another process can take a turn"]
+    E -. "Displayed as Total (U/K)" .-> G["Shown live in 'ps' and 'time'"]
 ```
 
-### Example
+### How It Works
+
+* **Starts at zero (`kernel/proc.c`):** When a process is created, its `cpu_time`, `user_ticks`, and `kernel_ticks` all start at `0`.
+* **Counted on every timer tick (`kernel/trap.c`):** Every timer interrupt increments the running process's tick counters before yielding the CPU.
+* **Easy demo tool (`user/cpuburn.c`):** Run `cpuburn &` in the background (prints its PID so you can stop it with `kill <pid>`) or run `cpuburn 2` for a quick finite demo.
+
+### Mini-Extension: User vs. Kernel Tick Split (`U/K`)
+
+* Separates CPU time into **User ticks** (time spent running the program's own code) and **Kernel ticks** (time spent inside OS system calls), displayed cleanly in `ps` as `Total (User/Kernel)`.
+
+### Live Demo & Output
 
 ```text
 $ cpuburn &
+[cpuburn] PID 9 started (stop with 'kill 9')
+
 $ ps
-PID   PRIORITY   CPU-TICKS (U/K)   STATE     NAME
-4     10         84 (83/1)         runble    cpuburn
+PID   PRIO  CPU (U/K)       MEM-KB  STATE   NAME
+----  ----  --------------  ------  ------  ----------------
+1     10    0 (0/0)         16      sleep   init
+2     5     0 (0/0)         20      sleep   sh
+11    10    0 (0/0)         16      run     ps
+9     10    3 (3/0)         16      run     cpuburn
+------------------------------------------------------------
+Active processes: 4 | Total process memory: 68 KB
 ```
 
-### Mini-Extension: User vs. Kernel CPU Tick Split (`user_ticks` / `kernel_ticks`)
-
-* Splits CPU-time accounting into `p->user_ticks` (timer interrupts caught in `usertrap()`) and `p->kernel_ticks` (timer interrupts caught in `kerneltrap()`), distinguishing pure user computation from time spent inside system calls and I/O drivers.
-
-### Relevant Files
+### Key Files
 
 * `kernel/proc.h`, `kernel/proc.c`, `kernel/trap.c`, `user/cpuburn.c`
 
 ---
 
-# 4. Copy-on-Write (COW) Memory Management
+# 4. Copy-on-Write (COW) Memory Management — `cowtest`
 
-During `fork()`, `uvmcopy()` avoids duplicating writable physical memory pages eagerly. Parent and child share the same physical frames marked read-only with `PTE_COW`, copying a page **only when either process writes to it**.
+### In Simple Words
+
+Normally, when a process creates a child with `fork()`, the OS immediately duplicates all of the parent's memory — even if the child never modifies it. **Copy-on-Write (COW)** works like two students sharing one textbook: both can read the same pages for free, and a personal photocopy is made **only when someone tries to write notes on a page**. This makes `fork()` much faster and saves RAM.
 
 ```mermaid
 flowchart TD
-    subgraph Phase1["Stage 1: Fast fork() Without Copying"]
-        F1["1. Parent calls fork() -> uvmcopy()"]
-        F2["2. Clear PTE_W (Read-Only) and set PTE_COW flag"]
-        F3["3. Share physical frame & increment refcnt (incref)"]
-        F1 --> F2 --> F3
+    subgraph Step1["Step 1: Fast Fork (Share Memory, No Copying Yet)"]
+        F1["1. Parent calls fork()"] --> F2["2. Parent and Child point to the same RAM pages"]
+        F2 --> F3["3. Mark shared pages Read-Only (COW) and increase owner count"]
     end
 
-    subgraph Phase2["Stage 2: On-Demand Copy Upon Write"]
-        W1["4. Parent or Child writes to shared COW page"]
-        W2["5. CPU raises Store Page Fault (scause = 15) -> cowalloc()"]
-        W3["Mini-Extension: Increment per-process p->cow_faults++ telemetry"]
-        W4{"6. Reference count == 1?"}
-        W5["Last owner: restore PTE_W & clear PTE_COW in-place"]
-        W6["Shared frame: kalloc() new 4 KB page, copy data, map PTE_W, decref() old frame"]
-        W1 --> W2 --> W3 --> W4
-        W4 -- "Yes (No copy needed)" --> W5
-        W4 -- "No (Still shared)" --> W6
+    subgraph Step2["Step 2: Copy Only When Someone Writes"]
+        W1["4. Parent or Child tries to write to a shared page"] --> W2["5. CPU pauses the write and calls the kernel"]
+        W2 --> W3{"6. Is anyone else still using this page?"}
+        W3 -- "No (only 1 owner left)" --> W4["Unlock writing directly (no copy needed)"]
+        W3 -- "Yes (2+ owners)" --> W5["Allocate a new 4 KB page, copy data, and switch writer to it"]
+        W4 --> W6["7. Bonus: Add +1 to COW fault counter and resume"]
+        W5 --> W6
     end
 
     F3 --> W1
 ```
 
-### Key Mechanisms
+### How It Works
 
-* **Frame Reference Counting (`kernel/kalloc.c`):** `incref()`, `getref()`, and `decref()` ensure physical pages return to the free list only when their reference count drops to `0`.
-* **Safe Kernel Writes (`copyout()`):** Detects `PTE_COW` destinations and resolves them via `cowalloc()` before writing kernel data into user memory.
+* **Owner counting (`kernel/kalloc.c`):** Every 4 KB physical page tracks how many processes share it (`incref`, `getref`, `decref`). A page is only freed when its owner count drops to `0`.
+* **Fast sharing & safe writes (`kernel/vm.c`, `kernel/trap.c`):** `uvmcopy()` shares pages read-only with a `PTE_COW` tag; on the first write, `cowalloc()` makes a private writable copy and flushes the TLB.
+* **Kernel write protection (`copyout()`):** Even when the OS writes into user memory (for example, during a `pipe` `read()`), `copyout()` checks for `PTE_COW` and makes a private copy so the parent's memory is never corrupted.
 
-### Mini-Extension: Per-Process COW Write-Fault Counter (`cow_faults`)
+### Mini-Extension: Live COW Fault Counter (`getcowfaults`)
 
-* Records `p->cow_faults` whenever `cowalloc()` resolves a write fault on a `PTE_COW` page, allowing `cowtest` and diagnostic tools to report exactly how many pages stayed shared after `fork()` versus how many required private allocation.
+* Every time `cowalloc()` resolves a write on a shared page, it increments `p->cow_faults`. Programs (like `cowtest`) can query this count via `getcowfaults()` to prove that **reading shared memory causes `0` copies**, while **writing triggers a copy on demand**.
 
-### Relevant Files
+### Live Demo & Output
 
-* `kernel/riscv.h`, `kernel/kalloc.c`, `kernel/vm.c`, `kernel/trap.c`, `user/cowtest.c`
+```text
+$ cowtest
+cowtest: starting Copy-on-Write verification
+[Test 1] Child read 'S' -> new COW faults: 0 (page stayed shared)
+[Test 2] Original: A
+         Child 1 wrote 'B' -> new COW faults: 1
+         After child 1: A (parent unchanged)
+         Child 2 wrote 'C' -> new COW faults: 1
+         After child 2: A (parent unchanged)
+[Test 3] Kernel copyout wrote 'K' into child -> new COW faults: 1
+         Parent still sees 'P' (protected from kernel copyout)
+cowtest: ALL TESTS PASSED
+```
+
+### Key Files
+
+* `kernel/riscv.h`, `kernel/kalloc.c`, `kernel/vm.c`, `kernel/trap.c`, `kernel/proc.c`, `user/cowtest.c`
 
 ---
 
 # 5. Memory Mapping — `mmap()` and `munmap()`
 
-NexusXv6 supports lazy, demand-paged virtual memory mappings using per-process Virtual Memory Areas (`struct vma vmas[16]`) with `PROT_READ`, `PROT_WRITE`, `MAP_SHARED`, and `MAP_PRIVATE`.
+### In Simple Words
+
+Instead of calling `read()` and `write()` repeatedly to work with a file, `mmap()` lets a program **treat a file like a normal array in memory**. Even better, it loads pages **lazily**: calling `mmap()` only reserves an address range and uses zero RAM at first — the kernel loads a 4 KB page from disk only at the exact moment your program touches it.
 
 ```mermaid
 flowchart TD
-    subgraph P1["Phase 1: Lazy Virtual Mapping (sys_mmap)"]
-        M1["1. User calls mmap(fd, length, prot, flags)"]
-        M2["2. Reserve VMA slot below TRAPFRAME (0 physical pages allocated)"]
-        M1 --> M2
+    subgraph Step1["Step 1: Reserve Address Range (No RAM Used Yet)"]
+        M1["1. Program calls mmap()"] --> M2["2. Kernel saves mapping details in a VMA slot"]
     end
 
-    subgraph P2["Phase 2: Demand Paging on First Touch"]
-        D1["3. Process accesses mapped VA -> Page Fault (scause 13 or 15)"]
-        D2{"4. VMA backing type?"}
-        D3["File-Backed VMA: kalloc() 4 KB + readi() from inode + map PTE"]
-        D4["Mini-Extension (MAP_ANONYMOUS, fd = -1): kalloc() zero-filled 4 KB page (no disk I/O)"]
-        D1 --> D2
-        D2 -- "File-Backed" --> D3
-        D2 -- "MAP_ANONYMOUS" --> D4
+    subgraph Step2["Step 2: Load Pages Only When Touched"]
+        T1["3. Program reads or writes inside the mapped region"] --> T2["4. Kernel catches the first touch"]
+        T2 --> T3{"5. File-backed or Anonymous?"}
+        T3 -- "File-backed" --> T4["Allocate 4 KB RAM and load that piece from disk"]
+        T3 -- "Anonymous (Bonus)" --> T5["Allocate 4 KB clean zero-filled RAM (no file needed)"]
     end
 
-    subgraph P3["Phase 3: Unmap & Persistence (sys_munmap / exit)"]
-        U1{"5. Unmap mode?"}
-        U2["MAP_SHARED (File): Write modified pages back via writei(), free RAM & clear PTE"]
-        U3["MAP_PRIVATE / MAP_ANONYMOUS: Free RAM & clear PTE directly"]
-        U1 -- "MAP_SHARED" --> U2
-        U1 -- "Private / Anon" --> U3
+    subgraph Step3["Step 3: Clean Up on munmap(), exit(), or exec()"]
+        U1{"6. Mapping mode?"}
+        U1 -- "MAP_SHARED (File)" --> U2["Save edits back to the file on disk, then free RAM"]
+        U1 -- "MAP_PRIVATE or Anonymous" --> U3["Discard private edits and free RAM directly"]
     end
 
-    M2 --> D1
-    D3 --> U1
-    D4 --> U1
+    M2 --> T1
+    T4 --> U1
+    T5 --> U1
 ```
 
-### Mini-Extension: Anonymous Zero-Filled Mapping (`MAP_ANONYMOUS`)
+### How It Works
 
-* Adds the `MAP_ANONYMOUS` flag (`fd = -1`), enabling processes to allocate large, lazily demand-zeroed virtual memory regions without opening or creating a temporary backing file on disk.
+* **Two file modes (`kernel/sysproc.c`, `kernel/vm.c`):**
+  * **`MAP_SHARED`:** Any edits you make in memory are automatically written back to the file when you call `munmap()` (or exit).
+  * **`MAP_PRIVATE`:** Any edits stay private to your process — the file on disk stays untouched.
+* **Lazy page loading (`kernel/trap.c`, `kernel/vm.c`):** `mmapfault()` allocates and maps one 4 KB page at a time only when accessed, checking read/write permissions first.
+* **Automatic cleanup (`kernel/proc.c`, `kernel/exec.c`):** `mmap_cleanup()` ensures mapped pages are always unmapped and saved cleanly when a process exits or calls `exec()`.
 
-### Relevant Files
+### Mini-Extension: Anonymous Zero-Filled Memory (`MAP_ANONYMOUS`)
 
-* `kernel/param.h`, `kernel/proc.h`, `kernel/proc.c`, `kernel/sysproc.c`, `kernel/vm.c`, `kernel/trap.c`, `user/mmaptest.c`
+* Allows calling `mmap()` with `MAP_ANONYMOUS` and `fd = -1` to get clean, zero-filled memory pages on demand **without opening or creating any file on disk**.
+
+### Live Demo & Output
+
+```text
+$ mmaptest
+mmaptest: starting memory-mapping verification
+[Test 1] MAP_SHARED mapped at 0x0000003FFFFFD000
+         Edited 'hello' -> 'Hello' (saved to disk on munmap)
+[Test 2] MAP_PRIVATE mapped at 0x0000003FFFFFD000
+         Changed memory to 'Xello', disk still has 'Hello' (isolated)
+[Test 3] MAP_ANONYMOUS (2 pages) mapped at 0x0000003FFFFFC000
+         Verified 8 KB zero-filled memory without a disk file
+mmaptest: ALL TESTS PASSED
+```
+
+### Key Files
+
+* `kernel/param.h`, `kernel/proc.h`, `kernel/proc.c`, `kernel/sysproc.c`, `kernel/vm.c`, `kernel/trap.c`, `kernel/exec.c`, `user/mmaptest.c`
 
 ---
 

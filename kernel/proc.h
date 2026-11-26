@@ -101,8 +101,11 @@ struct proc {
   int killed;           // If non-zero, have been killed
   int xstate;           // Exit status to be returned to parent's wait
   int pid;              // Process ID
-  int priority;         // Scheduling priority
-  uint64 cpu_time;      // CPU time used by the process
+  int priority;         // Base scheduling priority (PRIO_MIN..PRIO_MAX)
+  uint64 cpu_time;      // Total CPU ticks used (user_ticks + kernel_ticks)
+  uint64 user_ticks;    // CPU ticks spent running in user mode
+  uint64 kernel_ticks;  // CPU ticks spent running in kernel mode
+  uint64 cow_faults;    // Copy-on-Write write faults handled for this process
   uint64 trace_mask;    // Syscall tracing bitmask
   uint64 syscall_count; // Total system calls invoked
   uint64 ctime;         // Creation timestamp (ticks)

@@ -1,109 +1,140 @@
+// mmaptest - Demonstrates lazy demand-paged mmap() and munmap():
+//   1. MAP_SHARED: edits in memory are saved back to the file on munmap().
+//   2. MAP_PRIVATE: edits stay private and do NOT change the file on disk.
+//   3. MAP_ANONYMOUS: allocates zero-filled memory without any file on disk.
+
 #include "kernel/types.h"
 #include "kernel/stat.h"
 #include "kernel/fcntl.h"
 #include "kernel/param.h"
 #include "user/user.h"
 
-int
-main(void)
+static void
+fail(const char *msg)
+{
+  printf("mmaptest: FAIL - %s\n", msg);
+  unlink("mmapfile");
+  exit(1);
+}
+
+// Test 1: MAP_SHARED loads from disk on demand and writes changes back.
+static void
+test_map_shared(void)
 {
   int fd;
-  int fd2;
   char *p;
   char buf[8];
 
-  printf("mmaptest: starting\n");
-
   fd = open("mmapfile", O_CREATE | O_RDWR);
+  if (fd < 0)
+    fail("open mmapfile failed");
 
-  if(fd < 0){
-    printf("mmaptest: open failed\n");
-    exit(1);
-  }
+  if (write(fd, "hello", 5) != 5)
+    fail("write initial file data failed");
 
-  if(write(fd, "hello", 5) != 5){
-    printf("mmaptest: write failed\n");
-    close(fd);
-    exit(1);
-  }
+  p = mmap(0, 4096, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  if (p == (char *)-1)
+    fail("MAP_SHARED mmap failed");
 
-  p = mmap(0, 4096, PROT_READ | PROT_WRITE,
-           MAP_SHARED, fd, 0);
-
-  if(p == (char *)-1){
-    printf("mmaptest: shared mmap failed\n");
-    close(fd);
-    exit(1);
-  }
-
-  printf("mmaptest: mapped address %p\n", p);
-
-  if(p[0] != 'h'){
-    printf("mmaptest: file data incorrect: %c\n", p[0]);
-    exit(1);
-  }
+  printf("[Test 1] MAP_SHARED mapped at %p\n", p);
+  if (p[0] != 'h')
+    fail("MAP_SHARED initial read mismatch");
 
   p[0] = 'H';
-
-  if(munmap(p, 4096) < 0){
-    printf("mmaptest: shared munmap failed\n");
-    exit(1);
-  }
-
+  if (munmap(p, 4096) < 0)
+    fail("MAP_SHARED munmap failed");
   close(fd);
 
-  fd2 = open("mmapfile", O_RDONLY);
-
-  if(fd2 < 0){
-    printf("mmaptest: reopen failed\n");
-    exit(1);
-  }
+  fd = open("mmapfile", O_RDONLY);
+  if (fd < 0)
+    fail("reopen after MAP_SHARED failed");
 
   memset(buf, 0, sizeof(buf));
-
-  if(read(fd2, buf, 5) != 5){
-    printf("mmaptest: readback failed\n");
-    exit(1);
-  }
-
-  if(buf[0] != 'H'){
-    printf("mmaptest: shared writeback failed: %c\n", buf[0]);
-    exit(1);
-  }
-
-  close(fd2);
-
-  fd = open("mmapfile", O_RDWR);
-
-  if(fd < 0){
-    printf("mmaptest: second open failed\n");
-    exit(1);
-  }
-
-  p = mmap(0, 4096, PROT_READ | PROT_WRITE,
-           MAP_PRIVATE, fd, 0);
-
-  if(p == (char *)-1){
-    printf("mmaptest: private mmap failed\n");
-    exit(1);
-  }
-
-  if(p[0] != 'H'){
-    printf("mmaptest: private read failed\n");
-    exit(1);
-  }
-
-  p[0] = 'X';
-
-  if(munmap(p, 4096) < 0){
-    printf("mmaptest: private munmap failed\n");
-    exit(1);
-  }
-
+  if (read(fd, buf, 5) != 5)
+    fail("readback after MAP_SHARED failed");
   close(fd);
 
-  printf("mmaptest: ALL TESTS PASSED\n");
+  if (buf[0] != 'H')
+    fail("MAP_SHARED writeback did not persist to disk");
 
+  printf("         Edited 'hello' -> '%s' (saved to disk on munmap)\n", buf);
+}
+
+// Test 2: MAP_PRIVATE isolates memory edits from the backing file.
+static void
+test_map_private(void)
+{
+  int fd;
+  char *p;
+  char buf[8];
+
+  fd = open("mmapfile", O_RDWR);
+  if (fd < 0)
+    fail("open for MAP_PRIVATE failed");
+
+  p = mmap(0, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+  if (p == (char *)-1)
+    fail("MAP_PRIVATE mmap failed");
+
+  printf("[Test 2] MAP_PRIVATE mapped at %p\n", p);
+  if (p[0] != 'H')
+    fail("MAP_PRIVATE read mismatch");
+
+  p[0] = 'X';
+  if (munmap(p, 4096) < 0)
+    fail("MAP_PRIVATE munmap failed");
+  close(fd);
+
+  // Confirm the file on disk still says "Hello", not "Xello".
+  fd = open("mmapfile", O_RDONLY);
+  if (fd < 0)
+    fail("reopen after MAP_PRIVATE failed");
+
+  memset(buf, 0, sizeof(buf));
+  if (read(fd, buf, 5) != 5)
+    fail("readback after MAP_PRIVATE failed");
+  close(fd);
+
+  if (buf[0] != 'H')
+    fail("MAP_PRIVATE unexpectedly modified file on disk");
+
+  printf("         Changed memory to 'Xello', disk still has '%s' (isolated)\n", buf);
+}
+
+// Test 3: MAP_ANONYMOUS allocates zero-filled pages with no backing file.
+static void
+test_map_anonymous(void)
+{
+  char *p = mmap(0, 8192, PROT_READ | PROT_WRITE,
+                 MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  if (p == (char *)-1)
+    fail("MAP_ANONYMOUS mmap failed");
+
+  printf("[Test 3] MAP_ANONYMOUS (2 pages) mapped at %p\n", p);
+
+  // Both pages must start zero-filled on first touch.
+  if (p[0] != 0 || p[4095] != 0 || p[4096] != 0 || p[8191] != 0)
+    fail("MAP_ANONYMOUS pages were not zero-filled");
+
+  p[0] = 'N';
+  p[4096] = 'X';
+  if (p[0] != 'N' || p[4096] != 'X')
+    fail("MAP_ANONYMOUS read/write verification failed");
+
+  if (munmap(p, 8192) < 0)
+    fail("MAP_ANONYMOUS munmap failed");
+
+  printf("         Verified 8 KB zero-filled memory without a disk file\n");
+}
+
+int
+main(void)
+{
+  printf("mmaptest: starting memory-mapping verification\n");
+  test_map_shared();
+  test_map_private();
+  test_map_anonymous();
   unlink("mmapfile");
+  printf("mmaptest: ALL TESTS PASSED\n");
   exit(0);
 }
