@@ -68,12 +68,20 @@ usertrap(void)
     syscall();
   } else if ((which_dev = devintr()) != 0) {
     // Hardware device or timer interrupt handled.
+<<<<<<< HEAD
   } else if (r_scause() == 15 &&
              cowalloc(p->pagetable, r_stval()) != 0) {
     // Store page fault resolved via Copy-on-Write (COW).
   } else if ((r_scause() == 15 || r_scause() == 13) &&
              mmapfault(p->pagetable, r_stval(),
                        (r_scause() == 13) ? 1 : 0) != 0) {
+=======
+  } else if (r_scause() == 15 && cowalloc(p->pagetable, r_stval()) != 0) {
+    // Store page fault resolved via Copy-on-Write (COW).
+  } else if ((r_scause() == 15 || r_scause() == 13) &&
+             mmapfault(p->pagetable, r_stval(), (r_scause() == 13) ? 1 : 0) !=
+               0) {
+>>>>>>> b8719fe (updated project)
     // Load/store page fault resolved via lazy mmap demand paging.
   } else if ((r_scause() == 15 || r_scause() == 13) &&
              vmfault(p->pagetable, p->sz, r_stval(),

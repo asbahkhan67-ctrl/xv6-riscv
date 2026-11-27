@@ -26,7 +26,12 @@ usage(void)
   printf("Usage:\n");
   printf("  syscount            (self-check with 5x getpid())\n");
   printf("  syscount <pid>      (total syscalls for PID; 0 = self)\n");
+<<<<<<< HEAD
   printf("  syscount -v [pid]   (verbose breakdown & top syscalls; 0 = self)\n");
+=======
+  printf(
+    "  syscount -v [pid]   (verbose breakdown & top syscalls; 0 = self)\n");
+>>>>>>> b8719fe (updated project)
 }
 
 int
@@ -65,7 +70,12 @@ main(int argc, char *argv[])
       printf("syscount: process %d not found\n", pid);
       exit(1);
     }
+<<<<<<< HEAD
     printf("Process %d total syscalls: %d\n", (pid == 0) ? getpid() : pid, count);
+=======
+    printf("Process %d total syscalls: %d\n", (pid == 0) ? getpid() : pid,
+           count);
+>>>>>>> b8719fe (updated project)
     exit(0);
   }
 

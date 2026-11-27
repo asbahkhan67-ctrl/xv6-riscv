@@ -27,9 +27,20 @@ usage(void)
 {
   fprintf(2, "Usage:\n");
   fprintf(2, "  strace -a <cmd> [args...]     (trace all system calls)\n");
+<<<<<<< HEAD
   fprintf(2, "  strace -e <cmd> [args...]     (trace only failing system calls)\n");
   fprintf(2, "  strace -c <cmd> [args...]     (print call & error summary on exit)\n");
   fprintf(2, "  strace <mask> <cmd> [args...] (trace syscalls matching decimal bitmask)\n");
+=======
+  fprintf(
+    2, "  strace -e <cmd> [args...]     (trace only failing system calls)\n");
+  fprintf(
+    2,
+    "  strace -c <cmd> [args...]     (print call & error summary on exit)\n");
+  fprintf(
+    2,
+    "  strace <mask> <cmd> [args...] (trace syscalls matching decimal bitmask)\n");
+>>>>>>> b8719fe (updated project)
 }
 
 int

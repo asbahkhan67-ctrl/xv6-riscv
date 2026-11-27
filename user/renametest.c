@@ -10,12 +10,13 @@ main(int argc, char *argv[])
   printf("renametest (PID %d): before setprocname()\n", getpid());
   ps();
 
-  if(setprocname(newname) < 0){
+  if (setprocname(newname) < 0) {
     printf("renametest: setprocname failed\n");
     exit(1);
   }
 
-  printf("\nrenametest (PID %d): after setprocname(\"%s\")\n", getpid(), newname);
+  printf("\nrenametest (PID %d): after setprocname(\"%s\")\n", getpid(),
+         newname);
   ps();
 
   printf("renametest: ALL TESTS PASSED\n");

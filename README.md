@@ -31,18 +31,24 @@ The implementation targets **64-bit RISC-V (`rv64gc`)** and runs on **QEMU (`vir
 | **4** | **Copy-on-Write memory (COW)** | Counts how many pages actually had to be copied (`cow_faults`) |
 | **5** | **Memory mapping (`mmap` & `munmap`)** | Anonymous zero-filled memory (`MAP_ANONYMOUS`) without needing a file |
 <<<<<<< HEAD
+<<<<<<< HEAD
 | **6** | **System call tracing with `trace()` and `strace`** | Error-only filtering (`strace -e`) & post-run syscall summary table (`strace -c`) |
 | **7** | **System resource diagnostics (`sysinfo` & `free`)** | Human-readable MB / `%` mode (`free -m`) + open file & shared COW page counts |
 | **8** | **Parent process inspection (`getppid` & `pstree`)** | Targeted subtree root filtering (`pstree [pid]`) & per-node child count badge |
 | **9** | **Priority aging for starvation prevention** | Live effective-priority reporting (`EFF-PRIO`) & runtime tunable `setaging(ticks)` |
 | **10** | **Per-process syscall accounting (`getsyscallcount`)** | Per-syscall frequency breakdown & top-invoked syscall (`syscount -v [pid]`) |
 =======
+=======
+>>>>>>> b8719fe (updated project)
 | **6** | **System call tracing (`strace`)** | Show only failed calls (`-e`) or print a summary table (`-c`) |
 | **7** | **System health & memory (`free`)** | Megabyte view (`free -m`) plus open files & shared COW page counts |
 | **8** | **Process family tree (`pstree`)** | Filter by a chosen root PID (`pstree <pid>`) and show child counts (`kids=N`) |
 | **9** | **Anti-starvation priority aging (`agetest`)** | Live effective priority (`EFF`) in `ps` and runtime tuning (`agetest set`) |
 | **10** | **Syscall counter (`syscount`)** | Ranked breakdown of top syscalls and errors (`syscount -v [pid]`) |
+<<<<<<< HEAD
 >>>>>>> e18456e (Updated xv6-riscv)
+=======
+>>>>>>> b8719fe (updated project)
 | **11** | **Process execution benchmarking (`waitx` & `time`)** | CPU utilization percentage (`CPU%`) & context-switch count (`ctx_switches`) |
 | **12** | **Clean system power management (`halt` & `reboot`)** | Delayed countdown timer (`shutdown [sec]`) with console broadcast warning |
 | **13** | **Voluntary CPU yielding (`sched_yield`)** | Per-process voluntary yield counter (`yield_count`) for cooperative profiling |
@@ -207,6 +213,7 @@ flowchart TD
 ```text
 $ ps
 <<<<<<< HEAD
+<<<<<<< HEAD
 PID   PRIO  CPU (U/K)       MEM-KB  STATE   NAME
 ----  ----  --------------  ------  ------  ----------------
 1     10    0 (0/0)         16      sleep   init
@@ -215,6 +222,8 @@ PID   PRIO  CPU (U/K)       MEM-KB  STATE   NAME
 ------------------------------------------------------------
 Active processes: 3 | Total process memory: 52 KB
 =======
+=======
+>>>>>>> b8719fe (updated project)
 PID   PRIO  EFF   CPU (U/K)       MEM-KB  STATE   NAME
 ----  ----  ----  --------------  ------  ------  ----------------
 1     10    10    0 (0/0)         16      sleep   init
@@ -222,7 +231,10 @@ PID   PRIO  EFF   CPU (U/K)       MEM-KB  STATE   NAME
 3     10    10    0 (0/0)         16      run     ps
 ------------------------------------------------------------------
 Active processes: 3 | Total process memory: 52 KB | Aging: 10 ticks
+<<<<<<< HEAD
 >>>>>>> e18456e (Updated xv6-riscv)
+=======
+>>>>>>> b8719fe (updated project)
 ```
 
 ### Key Files
@@ -324,6 +336,7 @@ $ cpuburn &
 
 $ ps
 <<<<<<< HEAD
+<<<<<<< HEAD
 PID   PRIO  CPU (U/K)       MEM-KB  STATE   NAME
 ----  ----  --------------  ------  ------  ----------------
 1     10    0 (0/0)         16      sleep   init
@@ -333,6 +346,8 @@ PID   PRIO  CPU (U/K)       MEM-KB  STATE   NAME
 ------------------------------------------------------------
 Active processes: 4 | Total process memory: 68 KB
 =======
+=======
+>>>>>>> b8719fe (updated project)
 PID   PRIO  EFF   CPU (U/K)       MEM-KB  STATE   NAME
 ----  ----  ----  --------------  ------  ------  ----------------
 1     10    10    0 (0/0)         16      sleep   init
@@ -341,7 +356,10 @@ PID   PRIO  EFF   CPU (U/K)       MEM-KB  STATE   NAME
 9     10    10    3 (3/0)         16      run     cpuburn
 ------------------------------------------------------------------
 Active processes: 4 | Total process memory: 68 KB | Aging: 10 ticks
+<<<<<<< HEAD
 >>>>>>> e18456e (Updated xv6-riscv)
+=======
+>>>>>>> b8719fe (updated project)
 ```
 
 ### Key Files

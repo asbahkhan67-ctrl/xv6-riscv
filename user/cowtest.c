@@ -33,8 +33,14 @@ test_readonly_share(void)
     char seen = *page;
     int after = getcowfaults(0);
 
+<<<<<<< HEAD
     printf("[Test 1] Child read '%c' -> new COW faults: %d (page stayed shared)\n",
            seen, after - before);
+=======
+    printf(
+      "[Test 1] Child read '%c' -> new COW faults: %d (page stayed shared)\n",
+      seen, after - before);
+>>>>>>> b8719fe (updated project)
     if (seen != 'S' || (after - before) != 0)
       exit(1);
     exit(0);
@@ -66,8 +72,13 @@ test_write_isolation(void)
     *page = 'B';
     int after = getcowfaults(0);
 
+<<<<<<< HEAD
     printf("         Child 1 wrote '%c' -> new COW faults: %d\n",
            *page, after - before);
+=======
+    printf("         Child 1 wrote '%c' -> new COW faults: %d\n", *page,
+           after - before);
+>>>>>>> b8719fe (updated project)
     if (*page != 'B' || (after - before) < 1)
       exit(1);
     exit(0);
@@ -90,8 +101,13 @@ test_write_isolation(void)
     *page = 'C';
     int after = getcowfaults(0);
 
+<<<<<<< HEAD
     printf("         Child 2 wrote '%c' -> new COW faults: %d\n",
            *page, after - before);
+=======
+    printf("         Child 2 wrote '%c' -> new COW faults: %d\n", *page,
+           after - before);
+>>>>>>> b8719fe (updated project)
     if (*page != 'C' || (after - before) < 1)
       exit(1);
     exit(0);
@@ -130,8 +146,14 @@ test_copyout_cow(void)
     int after = getcowfaults(0);
     close(fds[0]);
 
+<<<<<<< HEAD
     printf("[Test 3] Kernel copyout wrote '%c' into child -> new COW faults: %d\n",
            *page, after - before);
+=======
+    printf(
+      "[Test 3] Kernel copyout wrote '%c' into child -> new COW faults: %d\n",
+      *page, after - before);
+>>>>>>> b8719fe (updated project)
     if (*page != 'K' || (after - before) < 1)
       exit(1);
     exit(0);
@@ -147,7 +169,12 @@ test_copyout_cow(void)
   wait(&status);
   if (status != 0 || *page != 'P')
     fail("copyout COW isolation failed");
+<<<<<<< HEAD
   printf("         Parent still sees '%c' (protected from kernel copyout)\n", *page);
+=======
+  printf("         Parent still sees '%c' (protected from kernel copyout)\n",
+         *page);
+>>>>>>> b8719fe (updated project)
 }
 
 int

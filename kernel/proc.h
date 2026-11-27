@@ -111,8 +111,13 @@ struct proc {
   uint64 syscall_count; // Total system calls invoked
   uint32 syscall_freq[MAX_SYSCALLS]; // Per-syscall invocation counts
   uint32 syscall_errs[MAX_SYSCALLS]; // Per-syscall failure counts (return < 0)
+<<<<<<< HEAD
   uint64 ctime;         // Creation timestamp (ticks)
   uint64 last_run_tick; // Last tick process ran or became runnable
+=======
+  uint64 ctime;                      // Creation timestamp (ticks)
+  uint64 last_run_tick;              // Last tick process ran or became runnable
+>>>>>>> b8719fe (updated project)
 
   // wait_lock must be held when using this:
   struct proc *parent; // Parent process

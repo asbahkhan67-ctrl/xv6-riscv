@@ -61,8 +61,14 @@ entry("setprocname");
 entry("getpriority");
 entry("getcowfaults");
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 entry("tracemode");
 entry("setaging");
 entry("syscallstats");
 >>>>>>> e18456e (Updated xv6-riscv)
+=======
+entry("tracemode");
+entry("setaging");
+entry("syscallstats");
+>>>>>>> b8719fe (updated project)

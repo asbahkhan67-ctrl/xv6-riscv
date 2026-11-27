@@ -10,12 +10,12 @@ main(void)
   printf("yieldtest: starting cooperative CPU yield test\n");
 
   pid1 = fork();
-  if(pid1 < 0){
+  if (pid1 < 0) {
     printf("yieldtest: fork failed\n");
     exit(1);
   }
-  if(pid1 == 0){
-    for(i = 1; i <= 3; i++){
+  if (pid1 == 0) {
+    for (i = 1; i <= 3; i++) {
       printf("Worker A (PID %d): step %d -> sched_yield()\n", getpid(), i);
       sched_yield();
     }
@@ -23,13 +23,13 @@ main(void)
   }
 
   pid2 = fork();
-  if(pid2 < 0){
+  if (pid2 < 0) {
     wait(0);
     printf("yieldtest: second fork failed\n");
     exit(1);
   }
-  if(pid2 == 0){
-    for(i = 1; i <= 3; i++){
+  if (pid2 == 0) {
+    for (i = 1; i <= 3; i++) {
       printf("Worker B (PID %d): step %d -> sched_yield()\n", getpid(), i);
       sched_yield();
     }

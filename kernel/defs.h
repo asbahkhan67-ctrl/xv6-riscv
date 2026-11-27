@@ -116,10 +116,15 @@ int             setpriority(int, int);
 int             getpriority(int);
 int             getcowfaults_proc(int);
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 int             setaging(int);
 int             getsyscall_snapshot(int, int *, char *, uint64 *, uint32 *, uint32 *);
 >>>>>>> e18456e (Updated xv6-riscv)
+=======
+int             setaging(int);
+int             getsyscall_snapshot(int, int *, char *, uint64 *, uint32 *, uint32 *);
+>>>>>>> b8719fe (updated project)
 uint64          nproc_active(void);
 int             kgetppid(void);
 int             getsyscallcount_proc(int);

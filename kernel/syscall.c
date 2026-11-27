@@ -121,11 +121,17 @@ extern uint64 sys_setprocname(void);
 extern uint64 sys_getpriority(void);
 extern uint64 sys_getcowfaults(void);
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 extern uint64 sys_tracemode(void);
 extern uint64 sys_setaging(void);
 extern uint64 sys_syscallstats(void);
 >>>>>>> e18456e (Updated xv6-riscv)
+=======
+extern uint64 sys_tracemode(void);
+extern uint64 sys_setaging(void);
+extern uint64 sys_syscallstats(void);
+>>>>>>> b8719fe (updated project)
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
@@ -171,11 +177,17 @@ static uint64 (*syscalls[])(void) = {
   [SYS_getpriority]     = sys_getpriority,
   [SYS_getcowfaults]    = sys_getcowfaults,
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
   [SYS_tracemode]       = sys_tracemode,
   [SYS_setaging]        = sys_setaging,
   [SYS_syscallstats]    = sys_syscallstats,
 >>>>>>> e18456e (Updated xv6-riscv)
+=======
+  [SYS_tracemode]       = sys_tracemode,
+  [SYS_setaging]        = sys_setaging,
+  [SYS_syscallstats]    = sys_syscallstats,
+>>>>>>> b8719fe (updated project)
   // clang-format on
 };
 
@@ -221,11 +233,17 @@ static char *syscall_names[] = {
   [SYS_getpriority]     = "getpriority",
   [SYS_getcowfaults]    = "getcowfaults",
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
   [SYS_tracemode]       = "tracemode",
   [SYS_setaging]        = "setaging",
   [SYS_syscallstats]    = "syscallstats",
 >>>>>>> e18456e (Updated xv6-riscv)
+=======
+  [SYS_tracemode]       = "tracemode",
+  [SYS_setaging]        = "setaging",
+  [SYS_syscallstats]    = "syscallstats",
+>>>>>>> b8719fe (updated project)
   // clang-format on
 };
 
@@ -394,8 +412,13 @@ syscall(void)
     // Live strace output (unless summary-only mode -c is active).
     if (((p->trace_mask >> num) & 1ULL) && !(p->trace_flags & TRACE_SUMMARY)) {
       if (!(p->trace_flags & TRACE_ERRORS) || (long)ret < 0) {
+<<<<<<< HEAD
         printk("%d: syscall %s -> %ld\n",
                p->pid, syscall_names[num], (long)ret);
+=======
+        printk("%d: syscall %s -> %ld\n", p->pid, syscall_names[num],
+               (long)ret);
+>>>>>>> b8719fe (updated project)
       }
     }
   } else {

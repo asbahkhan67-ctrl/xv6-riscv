@@ -39,8 +39,14 @@
 #define SYS_getpriority     38
 #define SYS_getcowfaults    39
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 #define SYS_tracemode       40
 #define SYS_setaging        41
 #define SYS_syscallstats    42
 >>>>>>> e18456e (Updated xv6-riscv)
+=======
+#define SYS_tracemode       40
+#define SYS_setaging        41
+#define SYS_syscallstats    42
+>>>>>>> b8719fe (updated project)

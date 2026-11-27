@@ -494,16 +494,14 @@ kwaitx(uint64 addr, uint64 wtime_addr, uint64 rtime_addr)
             release(&wait_lock);
             return -1;
           }
-          if (wtime_addr != 0 &&
-              copyout(p->pagetable, p->sz, wtime_addr, (char *)&wtime,
-                      sizeof(wtime)) < 0) {
+          if (wtime_addr != 0 && copyout(p->pagetable, p->sz, wtime_addr,
+                                         (char *)&wtime, sizeof(wtime)) < 0) {
             release(&pp->lock);
             release(&wait_lock);
             return -1;
           }
-          if (rtime_addr != 0 &&
-              copyout(p->pagetable, p->sz, rtime_addr, (char *)&rtime,
-                      sizeof(rtime)) < 0) {
+          if (rtime_addr != 0 && copyout(p->pagetable, p->sz, rtime_addr,
+                                         (char *)&rtime, sizeof(rtime)) < 0) {
             release(&pp->lock);
             release(&wait_lock);
             return -1;
@@ -600,6 +598,7 @@ scheduler(void)
 
       if (p->state == RUNNABLE) {
 <<<<<<< HEAD
+<<<<<<< HEAD
         uint64 waited = (now > p->last_run_tick) ? (now - p->last_run_tick) : 0;
         uint64 boost = waited / AGING_THRESHOLD;
         int eff_prio = p->priority - (int)boost;
@@ -609,6 +608,10 @@ scheduler(void)
         uint64 waited = 0;
         int eff_prio = calc_eff_prio(p, now, &waited);
 >>>>>>> e18456e (Updated xv6-riscv)
+=======
+        uint64 waited = 0;
+        int eff_prio = calc_eff_prio(p, now, &waited);
+>>>>>>> b8719fe (updated project)
 
         if (best == 0 || eff_prio < best_eff_prio ||
             (eff_prio == best_eff_prio && waited > best_waited)) {
@@ -907,6 +910,7 @@ procdump(void)
   int active_count = 0;
   uint64 total_mem_kb = 0;
 <<<<<<< HEAD
+<<<<<<< HEAD
 
   printk("PID   PRIO  CPU (U/K)       MEM-KB  STATE   NAME\n");
   printk("----  ----  --------------  ------  ------  ----------------\n");
@@ -916,6 +920,13 @@ procdump(void)
   printk("PID   PRIO  EFF   CPU (U/K)       MEM-KB  STATE   NAME\n");
   printk("----  ----  ----  --------------  ------  ------  ----------------\n");
 >>>>>>> e18456e (Updated xv6-riscv)
+=======
+  uint64 now = ticks;
+
+  printk("PID   PRIO  EFF   CPU (U/K)       MEM-KB  STATE   NAME\n");
+  printk(
+    "----  ----  ----  --------------  ------  ------  ----------------\n");
+>>>>>>> b8719fe (updated project)
 
   for (p = proc; p < &proc[NPROC]; p++) {
     if (p->state == UNUSED)
@@ -941,24 +952,33 @@ procdump(void)
     // Convert user memory size from bytes to KB (rounding up partial KB).
     uint64 mem_kb = (p->sz + 1023) / 1024;
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
     int eff_prio = calc_eff_prio(p, now, 0);
 >>>>>>> e18456e (Updated xv6-riscv)
+=======
+    int eff_prio = calc_eff_prio(p, now, 0);
+>>>>>>> b8719fe (updated project)
     total_mem_kb += mem_kb;
     active_count++;
 
     print_uint_col(p->pid, 6);
     print_uint_col(p->priority, 6);
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
     print_uint_col(eff_prio, 6);
 >>>>>>> e18456e (Updated xv6-riscv)
+=======
+    print_uint_col(eff_prio, 6);
+>>>>>>> b8719fe (updated project)
     print_col(cpubuf, 16);
     print_uint_col(mem_kb, 8);
     print_col(state, 8);
     printk("%s\n", p->name);
   }
 
+<<<<<<< HEAD
 <<<<<<< HEAD
   printk("------------------------------------------------------------\n");
   printk("Active processes: %d | Total process memory: %lu KB\n",
@@ -968,6 +988,13 @@ procdump(void)
   printk("Active processes: %d | Total process memory: %lu KB | Aging: %d ticks\n",
          active_count, total_mem_kb, aging_threshold);
 >>>>>>> e18456e (Updated xv6-riscv)
+=======
+  printk(
+    "------------------------------------------------------------------\n");
+  printk(
+    "Active processes: %d | Total process memory: %lu KB | Aging: %d ticks\n",
+    active_count, total_mem_kb, aging_threshold);
+>>>>>>> b8719fe (updated project)
 }
 
 // Update the scheduling priority of process 'pid' (pid == 0 targets caller).
@@ -1057,9 +1084,9 @@ nproc_active(void)
   struct proc *p;
   uint64 count = 0;
 
-  for(p = proc; p < &proc[NPROC]; p++){
+  for (p = proc; p < &proc[NPROC]; p++) {
     acquire(&p->lock);
-    if(p->state != UNUSED)
+    if (p->state != UNUSED)
       count++;
     release(&p->lock);
   }
@@ -1074,7 +1101,7 @@ kgetppid(void)
   int ppid = 0;
 
   acquire(&wait_lock);
-  if(p->parent != 0){
+  if (p->parent != 0) {
     acquire(&p->parent->lock);
     ppid = p->parent->pid;
     release(&p->parent->lock);
@@ -1118,8 +1145,13 @@ print_ptree_node(const struct pnode *node, int depth)
   else
     st = "???";
 
+<<<<<<< HEAD
   printk("[%d] %s (prio=%d, state=%s, kids=%d)\n",
          node->pid, node->name, node->priority, st, node->kids);
+=======
+  printk("[%d] %s (prio=%d, state=%s, kids=%d)\n", node->pid, node->name,
+         node->priority, st, node->kids);
+>>>>>>> b8719fe (updated project)
 }
 
 static void
@@ -1202,8 +1234,13 @@ proctree(int root_pid)
     return -1;
   }
 
+<<<<<<< HEAD
   printk("Subtree Root PID: %d (kids=%d)\n",
          nodes[root_idx].pid, nodes[root_idx].kids);
+=======
+  printk("Subtree Root PID: %d (kids=%d)\n", nodes[root_idx].pid,
+         nodes[root_idx].kids);
+>>>>>>> b8719fe (updated project)
   print_ptree_node(&nodes[root_idx], 0);
   print_ptree_nodes(nodes, count, nodes[root_idx].pid, 1);
   kfree((void *)nodes);

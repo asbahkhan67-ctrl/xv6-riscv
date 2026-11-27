@@ -36,10 +36,10 @@ kinit()
   initlock(&kmem.lock, "kmem");
   initlock(&ref.lock, "ref");
 
-  for(int i = 0; i < PHYSTOP / PGSIZE; i++)
+  for (int i = 0; i < PHYSTOP / PGSIZE; i++)
     ref.refcnt[i] = 1;
 
-  freerange(end, (void*)PHYSTOP);
+  freerange(end, (void *)PHYSTOP);
 }
 
 void
@@ -62,8 +62,7 @@ kfree(void *pa)
   int index;
   int count;
 
-  if(((uint64)pa % PGSIZE) != 0 || (char*)pa < end ||
-     (uint64)pa >= PHYSTOP)
+  if (((uint64)pa % PGSIZE) != 0 || (char *)pa < end || (uint64)pa >= PHYSTOP)
     panic("kfree");
 
   index = (uint64)pa / PGSIZE;
@@ -73,15 +72,15 @@ kfree(void *pa)
   count = ref.refcnt[index];
   release(&ref.lock);
 
-  if(count > 0)
+  if (count > 0)
     return;
 
-  if(count < 0)
+  if (count < 0)
     panic("kfree refcnt");
 
   memset(pa, 1, PGSIZE);
 
-  r = (struct run*)pa;
+  r = (struct run *)pa;
 
   acquire(&kmem.lock);
   r->next = kmem.freelist;
@@ -99,19 +98,19 @@ kalloc(void)
 
   acquire(&kmem.lock);
   r = kmem.freelist;
-  if(r)
+  if (r)
     kmem.freelist = r->next;
   release(&kmem.lock);
 
-  if(r){
-    memset((char*)r, 5, PGSIZE);
+  if (r) {
+    memset((char *)r, 5, PGSIZE);
 
     acquire(&ref.lock);
     ref.refcnt[(uint64)r / PGSIZE] = 1;
     release(&ref.lock);
   }
 
-  return (void*)r;
+  return (void *)r;
 }
 
 // Increment the reference count of a shared physical page (used by COW fork).
@@ -159,7 +158,7 @@ kfreemem(void)
   uint64 free_bytes = 0;
 
   acquire(&kmem.lock);
-  for(r = kmem.freelist; r != 0; r = r->next)
+  for (r = kmem.freelist; r != 0; r = r->next)
     free_bytes += PGSIZE;
   release(&kmem.lock);
 
@@ -170,7 +169,7 @@ uint64
 ktotalmem(void)
 {
   uint64 start = PGROUNDUP((uint64)end);
-  if(PHYSTOP <= start)
+  if (PHYSTOP <= start)
     return 0;
   return PHYSTOP - start;
 }

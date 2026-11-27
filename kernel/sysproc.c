@@ -413,7 +413,7 @@ sys_halt(void)
 {
   printk("System halting...\n");
   *(volatile uint32 *)VIRT_TEST = 0x5555;
-  for(;;)
+  for (;;)
     ;
   return 0;
 }
@@ -423,7 +423,7 @@ sys_reboot(void)
 {
   printk("System rebooting...\n");
   *(volatile uint32 *)VIRT_TEST = 0x7777;
-  for(;;)
+  for (;;)
     ;
   return 0;
 }
@@ -452,10 +452,10 @@ sys_setprocname(void)
   char buf[16];
   struct proc *p = myproc();
 
-  if(argstr(0, buf, sizeof(buf)) < 0)
+  if (argstr(0, buf, sizeof(buf)) < 0)
     return -1;
 
-  if(buf[0] == '\0')
+  if (buf[0] == '\0')
     return -1;
 
   acquire(&p->lock);

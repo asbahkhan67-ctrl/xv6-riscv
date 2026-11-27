@@ -44,11 +44,17 @@ int setprocname(const char *);
 int getpriority(int);
 int getcowfaults(int);
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 int tracemode(int);
 int setaging(int);
 int syscallstats(int);
 >>>>>>> e18456e (Updated xv6-riscv)
+=======
+int tracemode(int);
+int setaging(int);
+int syscallstats(int);
+>>>>>>> b8719fe (updated project)
 
 // ulib.c
 int stat(const char *, struct stat *);
