@@ -177,3 +177,20 @@ filewrite(struct file *f, uint64 addr, int n)
 
   return ret;
 }
+
+// Count currently open file table entries (ref > 0) for sysinfo diagnostics.
+uint64
+nopen_files(void)
+{
+  struct file *f;
+  uint64 count = 0;
+
+  acquire(&ftable.lock);
+  for (f = ftable.file; f < ftable.file + NFILE; f++) {
+    if (f->ref > 0)
+      count++;
+  }
+  release(&ftable.lock);
+
+  return count;
+}

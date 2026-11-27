@@ -45,7 +45,11 @@ forktest(void)
 
   print("fork test\n");
   32:	00000517          	auipc	a0,0x0
+<<<<<<< HEAD
   36:	47e50513          	addi	a0,a0,1150 # 4b0 <getcowfaults+0x10>
+=======
+  36:	49650513          	addi	a0,a0,1174 # 4c8 <syscallstats+0xa>
+>>>>>>> e18456e (Updated xv6-riscv)
   3a:	fc7ff0ef          	jal	0 <print>
 
   for (n = 0; n < N; n++) {
@@ -67,7 +71,11 @@ forktest(void)
   if (n == N) {
     print("fork claimed to work N times!\n");
   54:	00000517          	auipc	a0,0x0
+<<<<<<< HEAD
   58:	4ac50513          	addi	a0,a0,1196 # 500 <getcowfaults+0x60>
+=======
+  58:	4c450513          	addi	a0,a0,1220 # 518 <syscallstats+0x5a>
+>>>>>>> e18456e (Updated xv6-riscv)
   5c:	fa5ff0ef          	jal	0 <print>
     exit(1);
   60:	4505                	li	a0,1
@@ -80,7 +88,11 @@ forktest(void)
     if (wait(0) < 0) {
       print("wait stopped early\n");
   6a:	00000517          	auipc	a0,0x0
+<<<<<<< HEAD
   6e:	45650513          	addi	a0,a0,1110 # 4c0 <getcowfaults+0x20>
+=======
+  6e:	46e50513          	addi	a0,a0,1134 # 4d8 <syscallstats+0x1a>
+>>>>>>> e18456e (Updated xv6-riscv)
   72:	f8fff0ef          	jal	0 <print>
       exit(1);
   76:	4505                	li	a0,1
@@ -91,7 +103,11 @@ forktest(void)
   if (wait(0) != -1) {
     print("wait got too many\n");
   7c:	00000517          	auipc	a0,0x0
+<<<<<<< HEAD
   80:	45c50513          	addi	a0,a0,1116 # 4d8 <getcowfaults+0x38>
+=======
+  80:	47450513          	addi	a0,a0,1140 # 4f0 <syscallstats+0x32>
+>>>>>>> e18456e (Updated xv6-riscv)
   84:	f7dff0ef          	jal	0 <print>
     exit(1);
   88:	4505                	li	a0,1
@@ -114,7 +130,11 @@ forktest(void)
 
   print("fork test OK\n");
   ac:	00000517          	auipc	a0,0x0
+<<<<<<< HEAD
   b0:	44450513          	addi	a0,a0,1092 # 4f0 <getcowfaults+0x50>
+=======
+  b0:	45c50513          	addi	a0,a0,1116 # 508 <syscallstats+0x4a>
+>>>>>>> e18456e (Updated xv6-riscv)
   b4:	f4dff0ef          	jal	0 <print>
 }
   b8:	60e2                	ld	ra,24(sp)
@@ -997,3 +1017,36 @@ getcowfaults:
  4a4:	00000073          	ecall
  ret
  4a8:	8082                	ret
+<<<<<<< HEAD
+=======
+
+00000000000004aa <tracemode>:
+.global tracemode
+tracemode:
+ li a7, SYS_tracemode
+ 4aa:	02800893          	li	a7,40
+ ecall
+ 4ae:	00000073          	ecall
+ ret
+ 4b2:	8082                	ret
+
+00000000000004b4 <setaging>:
+.global setaging
+setaging:
+ li a7, SYS_setaging
+ 4b4:	02900893          	li	a7,41
+ ecall
+ 4b8:	00000073          	ecall
+ ret
+ 4bc:	8082                	ret
+
+00000000000004be <syscallstats>:
+.global syscallstats
+syscallstats:
+ li a7, SYS_syscallstats
+ 4be:	02a00893          	li	a7,42
+ ecall
+ 4c2:	00000073          	ecall
+ ret
+ 4c6:	8082                	ret
+>>>>>>> e18456e (Updated xv6-riscv)

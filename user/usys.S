@@ -195,3 +195,21 @@ getcowfaults:
  li a7, SYS_getcowfaults
  ecall
  ret
+<<<<<<< HEAD
+=======
+.global tracemode
+tracemode:
+ li a7, SYS_tracemode
+ ecall
+ ret
+.global setaging
+setaging:
+ li a7, SYS_setaging
+ ecall
+ ret
+.global syscallstats
+syscallstats:
+ li a7, SYS_syscallstats
+ ecall
+ ret
+>>>>>>> e18456e (Updated xv6-riscv)

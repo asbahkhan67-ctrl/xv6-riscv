@@ -120,6 +120,12 @@ extern uint64 sys_getcpuid(void);
 extern uint64 sys_setprocname(void);
 extern uint64 sys_getpriority(void);
 extern uint64 sys_getcowfaults(void);
+<<<<<<< HEAD
+=======
+extern uint64 sys_tracemode(void);
+extern uint64 sys_setaging(void);
+extern uint64 sys_syscallstats(void);
+>>>>>>> e18456e (Updated xv6-riscv)
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
@@ -164,6 +170,12 @@ static uint64 (*syscalls[])(void) = {
   [SYS_setprocname]     = sys_setprocname,
   [SYS_getpriority]     = sys_getpriority,
   [SYS_getcowfaults]    = sys_getcowfaults,
+<<<<<<< HEAD
+=======
+  [SYS_tracemode]       = sys_tracemode,
+  [SYS_setaging]        = sys_setaging,
+  [SYS_syscallstats]    = sys_syscallstats,
+>>>>>>> e18456e (Updated xv6-riscv)
   // clang-format on
 };
 
@@ -208,8 +220,157 @@ static char *syscall_names[] = {
   [SYS_setprocname]     = "setprocname",
   [SYS_getpriority]     = "getpriority",
   [SYS_getcowfaults]    = "getcowfaults",
+<<<<<<< HEAD
+=======
+  [SYS_tracemode]       = "tracemode",
+  [SYS_setaging]        = "setaging",
+  [SYS_syscallstats]    = "syscallstats",
+>>>>>>> e18456e (Updated xv6-riscv)
   // clang-format on
 };
+
+// Convert an unsigned 32-bit integer to decimal in buf and return its length.
+static int
+sc_uint_to_str(uint32 val, char *buf)
+{
+  char tmp[16];
+  int len = 0;
+
+  do {
+    tmp[len++] = '0' + (val % 10);
+    val /= 10;
+  } while (val > 0);
+
+  for (int i = 0; i < len; i++)
+    buf[i] = tmp[len - 1 - i];
+  buf[len] = '\0';
+  return len;
+}
+
+// Print a left-aligned string column padded with spaces (xv6 printk lacks %-Ns).
+static void
+sc_print_col(const char *s, int width)
+{
+  int len = strlen(s);
+
+  printk("%s", (char *)s);
+  if (len < width) {
+    for (int i = len; i < width; i++)
+      printk(" ");
+  } else {
+    printk(" ");
+  }
+}
+
+// Print a left-aligned uint32 column padded with spaces.
+static void
+sc_print_u32_col(uint32 val, int width)
+{
+  char buf[16];
+
+  sc_uint_to_str(val, buf);
+  sc_print_col(buf, width);
+}
+
+// Sort active syscall indices descending by call frequency.
+static int
+collect_sorted_syscalls(const uint32 *freq, uint64 mask, int *order)
+{
+  int n = 0;
+
+  for (int i = 1; i < NELEM(syscalls) && i < MAX_SYSCALLS; i++) {
+    if (freq[i] > 0 && ((mask >> i) & 1ULL) && syscall_names[i])
+      order[n++] = i;
+  }
+
+  for (int i = 0; i < n; i++) {
+    int best = i;
+    for (int j = i + 1; j < n; j++) {
+      if (freq[order[j]] > freq[order[best]])
+        best = j;
+    }
+    if (best != i) {
+      int tmp = order[i];
+      order[i] = order[best];
+      order[best] = tmp;
+    }
+  }
+
+  return n;
+}
+
+// Print a ranked syscall table from collected frequency and error arrays.
+static void
+print_ranked_syscall_table(const uint32 *freq, const uint32 *errs,
+                           const int *order, int n, uint64 *total_errs_out)
+{
+  uint64 total_errs = 0;
+
+  printk("SYSCALL           CALLS   ERRORS\n");
+  printk("----------------  ------  ------\n");
+  for (int k = 0; k < n; k++) {
+    int id = order[k];
+    total_errs += errs[id];
+    sc_print_col(syscall_names[id], 18);
+    sc_print_u32_col(freq[id], 8);
+    printk("%u\n", errs[id]);
+  }
+  printk("--------------------------------\n");
+
+  if (total_errs_out)
+    *total_errs_out = total_errs;
+}
+
+// Print a strace -c summary table when a traced process exits.
+void
+print_trace_summary(struct proc *p)
+{
+  int order[MAX_SYSCALLS];
+  int n = collect_sorted_syscalls(p->syscall_freq, p->trace_mask, order);
+  uint64 total_calls = 0;
+  uint64 total_errs = 0;
+
+  for (int k = 0; k < n; k++)
+    total_calls += p->syscall_freq[order[k]];
+
+  printk("\n--- strace summary (PID %d: %s) ---\n", p->pid, p->name);
+  print_ranked_syscall_table(p->syscall_freq, p->syscall_errs, order, n,
+                             &total_errs);
+  printk("Total syscalls: %lu | Total errors: %lu\n", total_calls, total_errs);
+}
+
+// Print per-syscall breakdown and top invoked syscalls for syscount -v [pid].
+int
+print_syscall_stats(int pid)
+{
+  int target_pid = 0;
+  char name[16];
+  uint64 total = 0;
+  uint32 freq[MAX_SYSCALLS];
+  uint32 errs[MAX_SYSCALLS];
+  int order[MAX_SYSCALLS];
+
+  if (getsyscall_snapshot(pid, &target_pid, name, &total, freq, errs) < 0)
+    return -1;
+
+  int n = collect_sorted_syscalls(freq, ~(uint64)0, order);
+
+  printk("Process %d (%s) total syscalls: %lu\n", target_pid, name, total);
+  if (n > 0) {
+    int top = (n < 5) ? n : 5;
+    printk("Top syscalls: ");
+    for (int k = 0; k < top; k++) {
+      int id = order[k];
+      printk("%s (%u)", syscall_names[id], freq[id]);
+      if (k + 1 < top)
+        printk(", ");
+    }
+    printk("\n\n");
+    print_ranked_syscall_table(freq, errs, order, n, 0);
+  }
+
+  return (int)total;
+}
 
 void
 syscall(void)
@@ -220,12 +381,22 @@ syscall(void)
   num = p->trapframe->a7;
   if (num > 0 && num < NELEM(syscalls) && syscalls[num]) {
     p->syscall_count++;
-    // Use num to lookup the system call function for num, call it,
-    // and store its return value in p->trapframe->a0
-    p->trapframe->a0 = syscalls[num]();
-    if ((p->trace_mask >> num) & 1ULL) {
-      printk("%d: syscall %s -> %ld\n",
-             p->pid, syscall_names[num], (long)p->trapframe->a0);
+    if (num < MAX_SYSCALLS)
+      p->syscall_freq[num]++;
+
+    // Dispatch system call handler and store return value in a0.
+    uint64 ret = syscalls[num]();
+    p->trapframe->a0 = ret;
+
+    if ((long)ret < 0 && num < MAX_SYSCALLS)
+      p->syscall_errs[num]++;
+
+    // Live strace output (unless summary-only mode -c is active).
+    if (((p->trace_mask >> num) & 1ULL) && !(p->trace_flags & TRACE_SUMMARY)) {
+      if (!(p->trace_flags & TRACE_ERRORS) || (long)ret < 0) {
+        printk("%d: syscall %s -> %ld\n",
+               p->pid, syscall_names[num], (long)ret);
+      }
     }
   } else {
     printk("%d %s: unknown sys call %d\n", p->pid, p->name, num);

@@ -14,6 +14,7 @@ struct proc *initproc;
 
 int nextpid = 1;
 struct spinlock pid_lock;
+int aging_threshold = AGING_THRESHOLD; // Runtime-tunable aging interval (ticks)
 
 extern void forkret(void);
 static void freeproc(struct proc *p);
@@ -129,7 +130,10 @@ found:
   p->kernel_ticks = 0;
   p->cow_faults = 0;
   p->trace_mask = 0;
+  p->trace_flags = 0;
   p->syscall_count = 0;
+  memset(p->syscall_freq, 0, sizeof(p->syscall_freq));
+  memset(p->syscall_errs, 0, sizeof(p->syscall_errs));
   p->ctime = ticks;
   p->last_run_tick = ticks;
   for (int i = 0; i < NVMA; i++)
@@ -180,7 +184,10 @@ freeproc(struct proc *p)
   p->kernel_ticks = 0;
   p->cow_faults = 0;
   p->trace_mask = 0;
+  p->trace_flags = 0;
   p->syscall_count = 0;
+  memset(p->syscall_freq, 0, sizeof(p->syscall_freq));
+  memset(p->syscall_errs, 0, sizeof(p->syscall_errs));
   p->ctime = 0;
   p->last_run_tick = 0;
   p->name[0] = 0;
@@ -296,6 +303,7 @@ kfork(void)
   }
   np->sz = p->sz;
   np->trace_mask = p->trace_mask;
+  np->trace_flags = p->trace_flags;
 
   // Inherit active memory mappings (duplicate file handle only if file-backed).
   for (i = 0; i < NVMA; i++) {
@@ -361,6 +369,9 @@ kexit(int status)
 
   if (p == initproc)
     panic("init exiting");
+
+  if (p->trace_flags & TRACE_SUMMARY)
+    print_trace_summary(p);
 
   mmap_cleanup(p);
 
@@ -519,6 +530,48 @@ kwaitx(uint64 addr, uint64 wtime_addr, uint64 rtime_addr)
   }
 }
 
+// Compute a process's effective priority using anti-starvation aging.
+// Base priority (p->priority) is never mutated; RUNNABLE processes earn a
+// boost of 1 level for every 'aging_threshold' ticks spent waiting.
+static int
+calc_eff_prio(struct proc *p, uint64 now, uint64 *waited_out)
+{
+  uint64 waited = 0;
+  int eff_prio = p->priority;
+  int thresh = aging_threshold;
+
+  if (thresh < 1)
+    thresh = 1;
+
+  if (p->state == RUNNABLE) {
+    waited = (now > p->last_run_tick) ? (now - p->last_run_tick) : 0;
+    uint64 boost = waited / (uint64)thresh;
+    eff_prio = p->priority - (int)boost;
+    if (eff_prio < PRIO_MIN)
+      eff_prio = PRIO_MIN;
+  }
+
+  if (waited_out)
+    *waited_out = waited;
+
+  return eff_prio;
+}
+
+// Query or tune the runtime priority aging threshold (ticks per boost).
+// Passing 0 returns the current threshold; passing 1..1000 sets it and
+// returns the previous threshold; invalid values return -1.
+int
+setaging(int new_ticks)
+{
+  if (new_ticks < 0 || new_ticks > 1000)
+    return -1;
+
+  int old = aging_threshold;
+  if (new_ticks > 0)
+    aging_threshold = new_ticks;
+  return old;
+}
+
 // Per-CPU process scheduler with priority selection and priority aging.
 // Lower priority numbers run first (PRIO_MIN=1 highest .. PRIO_MAX=20 lowest).
 void
@@ -546,11 +599,16 @@ scheduler(void)
       acquire(&p->lock);
 
       if (p->state == RUNNABLE) {
+<<<<<<< HEAD
         uint64 waited = (now > p->last_run_tick) ? (now - p->last_run_tick) : 0;
         uint64 boost = waited / AGING_THRESHOLD;
         int eff_prio = p->priority - (int)boost;
         if (eff_prio < PRIO_MIN)
           eff_prio = PRIO_MIN;
+=======
+        uint64 waited = 0;
+        int eff_prio = calc_eff_prio(p, now, &waited);
+>>>>>>> e18456e (Updated xv6-riscv)
 
         if (best == 0 || eff_prio < best_eff_prio ||
             (eff_prio == best_eff_prio && waited > best_waited)) {
@@ -848,9 +906,16 @@ procdump(void)
   char *state;
   int active_count = 0;
   uint64 total_mem_kb = 0;
+<<<<<<< HEAD
 
   printk("PID   PRIO  CPU (U/K)       MEM-KB  STATE   NAME\n");
   printk("----  ----  --------------  ------  ------  ----------------\n");
+=======
+  uint64 now = ticks;
+
+  printk("PID   PRIO  EFF   CPU (U/K)       MEM-KB  STATE   NAME\n");
+  printk("----  ----  ----  --------------  ------  ------  ----------------\n");
+>>>>>>> e18456e (Updated xv6-riscv)
 
   for (p = proc; p < &proc[NPROC]; p++) {
     if (p->state == UNUSED)
@@ -875,20 +940,34 @@ procdump(void)
 
     // Convert user memory size from bytes to KB (rounding up partial KB).
     uint64 mem_kb = (p->sz + 1023) / 1024;
+<<<<<<< HEAD
+=======
+    int eff_prio = calc_eff_prio(p, now, 0);
+>>>>>>> e18456e (Updated xv6-riscv)
     total_mem_kb += mem_kb;
     active_count++;
 
     print_uint_col(p->pid, 6);
     print_uint_col(p->priority, 6);
+<<<<<<< HEAD
+=======
+    print_uint_col(eff_prio, 6);
+>>>>>>> e18456e (Updated xv6-riscv)
     print_col(cpubuf, 16);
     print_uint_col(mem_kb, 8);
     print_col(state, 8);
     printk("%s\n", p->name);
   }
 
+<<<<<<< HEAD
   printk("------------------------------------------------------------\n");
   printk("Active processes: %d | Total process memory: %lu KB\n",
          active_count, total_mem_kb);
+=======
+  printk("------------------------------------------------------------------\n");
+  printk("Active processes: %d | Total process memory: %lu KB | Aging: %d ticks\n",
+         active_count, total_mem_kb, aging_threshold);
+>>>>>>> e18456e (Updated xv6-riscv)
 }
 
 // Update the scheduling priority of process 'pid' (pid == 0 targets caller).
@@ -1009,68 +1088,79 @@ struct pnode {
   int pid;
   int ppid;
   int priority;
+  int kids;
   enum procstate state;
   char name[16];
 };
 
 static void
-print_ptree_nodes(struct pnode *nodes, int count, int ppid, int depth)
+print_ptree_node(const struct pnode *node, int depth)
 {
   static char *states[] = {
     // clang-format off
     [UNUSED]    = "unused",
-    [USED]      = "used  ",
-    [SLEEPING]  = "sleep ",
+    [USED]      = "used",
+    [SLEEPING]  = "sleep",
     [RUNNABLE]  = "runble",
-    [RUNNING]   = "run   ",
+    [RUNNING]   = "run",
     [ZOMBIE]    = "zombie"
     // clang-format on
   };
-  int i, d;
   char *st;
 
-  if(depth > 16)
+  for (int d = 0; d < depth; d++)
+    printk("  ");
+  if (depth > 0)
+    printk("|-- ");
+
+  if (node->state >= 0 && node->state < NELEM(states) && states[node->state])
+    st = states[node->state];
+  else
+    st = "???";
+
+  printk("[%d] %s (prio=%d, state=%s, kids=%d)\n",
+         node->pid, node->name, node->priority, st, node->kids);
+}
+
+static void
+print_ptree_nodes(struct pnode *nodes, int count, int ppid, int depth)
+{
+  if (depth > 16)
     return;
 
-  for(i = 0; i < count; i++){
-    if(nodes[i].ppid == ppid){
-      for(d = 0; d < depth; d++)
-        printk("  ");
-      if(depth > 0)
-        printk("|-- ");
-      if(nodes[i].state >= 0 && nodes[i].state < NELEM(states) && states[nodes[i].state])
-        st = states[nodes[i].state];
-      else
-        st = "???";
-      printk("[%d] %s (prio=%d, state=%s)\n",
-             nodes[i].pid, nodes[i].name, nodes[i].priority, st);
+  for (int i = 0; i < count; i++) {
+    if (nodes[i].ppid == ppid) {
+      print_ptree_node(&nodes[i], depth);
       print_ptree_nodes(nodes, count, nodes[i].pid, depth + 1);
     }
   }
 }
 
-void
-proctree(void)
+// Render the live process hierarchy (or only the subtree rooted at root_pid).
+// Returns 0 on success, -1 on allocation failure or if root_pid is not active.
+int
+proctree(int root_pid)
 {
   struct pnode *nodes;
   struct proc *p;
   int count = 0;
 
   nodes = (struct pnode *)kalloc();
-  if(nodes == 0)
-    return;
+  if (nodes == 0)
+    return -1;
 
   acquire(&wait_lock);
-  for(p = proc; p < &proc[NPROC]; p++){
+  for (p = proc; p < &proc[NPROC]; p++) {
     acquire(&p->lock);
-    if(p->state != UNUSED){
+    if (p->state != UNUSED) {
       nodes[count].pid = p->pid;
       nodes[count].priority = p->priority;
+      nodes[count].kids = 0;
       nodes[count].state = p->state;
       safestrcpy(nodes[count].name, p->name, sizeof(nodes[count].name));
       release(&p->lock);
 
-      if(p->parent != 0){
+      if (p->parent != 0) {
         acquire(&p->parent->lock);
         nodes[count].ppid = p->parent->pid;
         release(&p->parent->lock);
@@ -1084,8 +1174,40 @@ proctree(void)
   }
   release(&wait_lock);
 
-  print_ptree_nodes(nodes, count, 0, 0);
+  // Compute direct active child counts for each node.
+  for (int i = 0; i < count; i++) {
+    for (int j = 0; j < count; j++) {
+      if (nodes[j].ppid == nodes[i].pid)
+        nodes[i].kids++;
+    }
+  }
+
+  if (root_pid <= 0) {
+    print_ptree_nodes(nodes, count, 0, 0);
+    kfree((void *)nodes);
+    return 0;
+  }
+
+  // Subtree filtering mode: locate root_pid and print its descendants.
+  int root_idx = -1;
+  for (int i = 0; i < count; i++) {
+    if (nodes[i].pid == root_pid) {
+      root_idx = i;
+      break;
+    }
+  }
+
+  if (root_idx < 0) {
+    kfree((void *)nodes);
+    return -1;
+  }
+
+  printk("Subtree Root PID: %d (kids=%d)\n",
+         nodes[root_idx].pid, nodes[root_idx].kids);
+  print_ptree_node(&nodes[root_idx], 0);
+  print_ptree_nodes(nodes, count, nodes[root_idx].pid, 1);
   kfree((void *)nodes);
+  return 0;
 }
 
 int
@@ -1094,15 +1216,51 @@ getsyscallcount_proc(int pid)
   struct proc *p;
   int count;
 
-  if(pid <= 0)
+  if (pid <= 0)
     return (int)myproc()->syscall_count;
 
-  for(p = proc; p < &proc[NPROC]; p++){
+  for (p = proc; p < &proc[NPROC]; p++) {
     acquire(&p->lock);
-    if(p->state != UNUSED && p->pid == pid){
+    if (p->state != UNUSED && p->pid == pid) {
       count = (int)p->syscall_count;
       release(&p->lock);
       return count;
+    }
+    release(&p->lock);
+  }
+
+  return -1;
+}
+
+// Copy a process's syscall frequency and error counters safely for syscount -v.
+int
+getsyscall_snapshot(int pid, int *pid_out, char *name_out, uint64 *total_out,
+                    uint32 *freq_out, uint32 *errs_out)
+{
+  struct proc *p;
+
+  if (pid <= 0) {
+    p = myproc();
+    acquire(&p->lock);
+    *pid_out = p->pid;
+    safestrcpy(name_out, p->name, 16);
+    *total_out = p->syscall_count;
+    memmove(freq_out, p->syscall_freq, sizeof(p->syscall_freq));
+    memmove(errs_out, p->syscall_errs, sizeof(p->syscall_errs));
+    release(&p->lock);
+    return 0;
+  }
+
+  for (p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
+    if (p->state != UNUSED && p->pid == pid) {
+      *pid_out = p->pid;
+      safestrcpy(name_out, p->name, 16);
+      *total_out = p->syscall_count;
+      memmove(freq_out, p->syscall_freq, sizeof(p->syscall_freq));
+      memmove(errs_out, p->syscall_errs, sizeof(p->syscall_errs));
+      release(&p->lock);
+      return 0;
     }
     release(&p->lock);
   }

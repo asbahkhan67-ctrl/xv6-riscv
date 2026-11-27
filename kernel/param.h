@@ -12,10 +12,21 @@
 #define FSSIZE          4000              // size of file system in blocks
 #define MAXPATH         128               // maximum file path name
 #define USERSTACK       1                 // user stack pages
+<<<<<<< HEAD
 #define AGING_THRESHOLD 10                // ticks before priority aging boost
 #define PRIO_MIN        1                 // highest scheduling priority
 #define PRIO_DEFAULT    10                // default process priority
 #define PRIO_MAX        20                // lowest scheduling priority
+=======
+#define AGING_THRESHOLD 10                // default ticks before priority aging boost
+#define PRIO_MIN        1                 // highest scheduling priority
+#define PRIO_DEFAULT    10                // default process priority
+#define PRIO_MAX        20                // lowest scheduling priority
+#define MAX_SYSCALLS    48                // max syscall slots tracked for per-call stats
+
+#define TRACE_ERRORS    0x1               // strace -e: log only failing syscalls (ret < 0)
+#define TRACE_SUMMARY   0x2               // strace -c: print call & error summary on exit
+>>>>>>> e18456e (Updated xv6-riscv)
 
 #define PROT_READ       0x1
 #define PROT_WRITE      0x2

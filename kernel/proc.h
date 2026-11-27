@@ -107,7 +107,10 @@ struct proc {
   uint64 kernel_ticks;  // CPU ticks spent running in kernel mode
   uint64 cow_faults;    // Copy-on-Write write faults handled for this process
   uint64 trace_mask;    // Syscall tracing bitmask
+  int trace_flags;      // Syscall trace mode (TRACE_ERRORS / TRACE_SUMMARY)
   uint64 syscall_count; // Total system calls invoked
+  uint32 syscall_freq[MAX_SYSCALLS]; // Per-syscall invocation counts
+  uint32 syscall_errs[MAX_SYSCALLS]; // Per-syscall failure counts (return < 0)
   uint64 ctime;         // Creation timestamp (ticks)
   uint64 last_run_tick; // Last tick process ran or became runnable
 

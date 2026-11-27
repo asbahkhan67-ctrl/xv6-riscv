@@ -298,9 +298,32 @@ uint64
 sys_trace(void)
 {
   uint64 mask;
+  struct proc *p = myproc();
 
   argaddr(0, &mask);
-  myproc()->trace_mask = mask;
+  p->trace_mask = mask;
+  if (p->trace_flags & TRACE_SUMMARY) {
+    memset(p->syscall_freq, 0, sizeof(p->syscall_freq));
+    memset(p->syscall_errs, 0, sizeof(p->syscall_errs));
+  }
+  return 0;
+}
+
+uint64
+sys_tracemode(void)
+{
+  int flags;
+  struct proc *p = myproc();
+
+  argint(0, &flags);
+  if (flags & ~(TRACE_ERRORS | TRACE_SUMMARY))
+    return -1;
+
+  p->trace_flags = flags;
+  if (flags & TRACE_SUMMARY) {
+    memset(p->syscall_freq, 0, sizeof(p->syscall_freq));
+    memset(p->syscall_errs, 0, sizeof(p->syscall_errs));
+  }
   return 0;
 }
 
@@ -316,11 +339,13 @@ sys_sysinfo(void)
   info.freemem = kfreemem();
   info.totalmem = ktotalmem();
   info.nproc = nproc_active();
+  info.nfiles = nopen_files();
+  info.shared_pages = ksharedpages();
   acquire(&tickslock);
   info.uptime = ticks;
   release(&tickslock);
 
-  if(copyout(p->pagetable, p->sz, addr, (char *)&info, sizeof(info)) < 0)
+  if (copyout(p->pagetable, p->sz, addr, (char *)&info, sizeof(info)) < 0)
     return -1;
 
   return 0;
@@ -335,8 +360,13 @@ sys_getppid(void)
 uint64
 sys_ptree(void)
 {
-  proctree();
-  return 0;
+  int root_pid;
+
+  argint(0, &root_pid);
+  if (root_pid < 0)
+    return -1;
+
+  return proctree(root_pid);
 }
 
 uint64
@@ -346,6 +376,24 @@ sys_getsyscallcount(void)
 
   argint(0, &pid);
   return getsyscallcount_proc(pid);
+}
+
+uint64
+sys_setaging(void)
+{
+  int new_ticks;
+
+  argint(0, &new_ticks);
+  return setaging(new_ticks);
+}
+
+uint64
+sys_syscallstats(void)
+{
+  int pid;
+
+  argint(0, &pid);
+  return print_syscall_stats(pid);
 }
 
 uint64

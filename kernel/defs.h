@@ -34,6 +34,7 @@ void            fileinit(void);
 int             fileread(struct file*, uint64, int n);
 int             filestat(struct file*, uint64 addr);
 int             filewrite(struct file*, uint64, int n);
+uint64          nopen_files(void);
 
 // fs.c
 void            fsinit(int);
@@ -64,6 +65,7 @@ int             getref(void *);
 void            decref(void *);
 uint64          kfreemem(void);
 uint64          ktotalmem(void);
+uint64          ksharedpages(void);
 void            kinit(void);
 
 // log.c
@@ -109,10 +111,15 @@ void            yield(void);
 int             either_copyout(int user_dst, uint64 dst, void *src, uint64 len);
 int             either_copyin(void *dst, int user_src, uint64 src, uint64 len);
 void            procdump(void);
-void            proctree(void);
+int             proctree(int);
 int             setpriority(int, int);
 int             getpriority(int);
 int             getcowfaults_proc(int);
+<<<<<<< HEAD
+=======
+int             setaging(int);
+int             getsyscall_snapshot(int, int *, char *, uint64 *, uint32 *, uint32 *);
+>>>>>>> e18456e (Updated xv6-riscv)
 uint64          nproc_active(void);
 int             kgetppid(void);
 int             getsyscallcount_proc(int);
@@ -151,6 +158,8 @@ void            argaddr(int, uint64 *);
 int             fetchstr(uint64, char*, int);
 int             fetchaddr(uint64, uint64*);
 void            syscall();
+void            print_trace_summary(struct proc *);
+int             print_syscall_stats(int);
 
 // trap.c
 extern uint     ticks;

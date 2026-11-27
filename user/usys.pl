@@ -60,3 +60,9 @@ entry("getcpuid");
 entry("setprocname");
 entry("getpriority");
 entry("getcowfaults");
+<<<<<<< HEAD
+=======
+entry("tracemode");
+entry("setaging");
+entry("syscallstats");
+>>>>>>> e18456e (Updated xv6-riscv)

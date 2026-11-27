@@ -33,7 +33,7 @@ int munmap(void *, uint64);
 int trace(uint64);
 int sysinfo(struct sysinfo *);
 int getppid(void);
-int ptree(void);
+int ptree(int);
 int getsyscallcount(int);
 int waitx(int *, uint64 *, uint64 *);
 int halt(void);
@@ -43,6 +43,12 @@ int getcpuid(void);
 int setprocname(const char *);
 int getpriority(int);
 int getcowfaults(int);
+<<<<<<< HEAD
+=======
+int tracemode(int);
+int setaging(int);
+int syscallstats(int);
+>>>>>>> e18456e (Updated xv6-riscv)
 
 // ulib.c
 int stat(const char *, struct stat *);

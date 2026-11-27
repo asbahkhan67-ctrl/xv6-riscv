@@ -174,3 +174,21 @@ ktotalmem(void)
     return 0;
   return PHYSTOP - start;
 }
+
+// Count managed physical pages currently shared by 2+ processes (COW refcnt > 1).
+uint64
+ksharedpages(void)
+{
+  uint64 start = PGROUNDUP((uint64)end) / PGSIZE;
+  uint64 limit = PHYSTOP / PGSIZE;
+  uint64 shared = 0;
+
+  acquire(&ref.lock);
+  for (uint64 i = start; i < limit; i++) {
+    if (ref.refcnt[i] > 1)
+      shared++;
+  }
+  release(&ref.lock);
+
+  return shared;
+}

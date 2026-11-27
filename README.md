@@ -30,11 +30,19 @@ The implementation targets **64-bit RISC-V (`rv64gc`)** and runs on **QEMU (`vir
 | **3** | **CPU time tracking (`cpuburn`)** | Splits CPU time into user work vs. kernel work (`U/K` ticks) |
 | **4** | **Copy-on-Write memory (COW)** | Counts how many pages actually had to be copied (`cow_faults`) |
 | **5** | **Memory mapping (`mmap` & `munmap`)** | Anonymous zero-filled memory (`MAP_ANONYMOUS`) without needing a file |
+<<<<<<< HEAD
 | **6** | **System call tracing with `trace()` and `strace`** | Error-only filtering (`strace -e`) & post-run syscall summary table (`strace -c`) |
 | **7** | **System resource diagnostics (`sysinfo` & `free`)** | Human-readable MB / `%` mode (`free -m`) + open file & shared COW page counts |
 | **8** | **Parent process inspection (`getppid` & `pstree`)** | Targeted subtree root filtering (`pstree [pid]`) & per-node child count badge |
 | **9** | **Priority aging for starvation prevention** | Live effective-priority reporting (`EFF-PRIO`) & runtime tunable `setaging(ticks)` |
 | **10** | **Per-process syscall accounting (`getsyscallcount`)** | Per-syscall frequency breakdown & top-invoked syscall (`syscount -v [pid]`) |
+=======
+| **6** | **System call tracing (`strace`)** | Show only failed calls (`-e`) or print a summary table (`-c`) |
+| **7** | **System health & memory (`free`)** | Megabyte view (`free -m`) plus open files & shared COW page counts |
+| **8** | **Process family tree (`pstree`)** | Filter by a chosen root PID (`pstree <pid>`) and show child counts (`kids=N`) |
+| **9** | **Anti-starvation priority aging (`agetest`)** | Live effective priority (`EFF`) in `ps` and runtime tuning (`agetest set`) |
+| **10** | **Syscall counter (`syscount`)** | Ranked breakdown of top syscalls and errors (`syscount -v [pid]`) |
+>>>>>>> e18456e (Updated xv6-riscv)
 | **11** | **Process execution benchmarking (`waitx` & `time`)** | CPU utilization percentage (`CPU%`) & context-switch count (`ctx_switches`) |
 | **12** | **Clean system power management (`halt` & `reboot`)** | Delayed countdown timer (`shutdown [sec]`) with console broadcast warning |
 | **13** | **Voluntary CPU yielding (`sched_yield`)** | Per-process voluntary yield counter (`yield_count`) for cooperative profiling |
@@ -198,6 +206,7 @@ flowchart TD
 
 ```text
 $ ps
+<<<<<<< HEAD
 PID   PRIO  CPU (U/K)       MEM-KB  STATE   NAME
 ----  ----  --------------  ------  ------  ----------------
 1     10    0 (0/0)         16      sleep   init
@@ -205,6 +214,15 @@ PID   PRIO  CPU (U/K)       MEM-KB  STATE   NAME
 3     10    0 (0/0)         16      run     ps
 ------------------------------------------------------------
 Active processes: 3 | Total process memory: 52 KB
+=======
+PID   PRIO  EFF   CPU (U/K)       MEM-KB  STATE   NAME
+----  ----  ----  --------------  ------  ------  ----------------
+1     10    10    0 (0/0)         16      sleep   init
+2     10    10    0 (0/0)         20      sleep   sh
+3     10    10    0 (0/0)         16      run     ps
+------------------------------------------------------------------
+Active processes: 3 | Total process memory: 52 KB | Aging: 10 ticks
+>>>>>>> e18456e (Updated xv6-riscv)
 ```
 
 ### Key Files
@@ -305,6 +323,7 @@ $ cpuburn &
 [cpuburn] PID 9 started (stop with 'kill 9')
 
 $ ps
+<<<<<<< HEAD
 PID   PRIO  CPU (U/K)       MEM-KB  STATE   NAME
 ----  ----  --------------  ------  ------  ----------------
 1     10    0 (0/0)         16      sleep   init
@@ -313,6 +332,16 @@ PID   PRIO  CPU (U/K)       MEM-KB  STATE   NAME
 9     10    3 (3/0)         16      run     cpuburn
 ------------------------------------------------------------
 Active processes: 4 | Total process memory: 68 KB
+=======
+PID   PRIO  EFF   CPU (U/K)       MEM-KB  STATE   NAME
+----  ----  ----  --------------  ------  ------  ----------------
+1     10    10    0 (0/0)         16      sleep   init
+2     5     5     0 (0/0)         20      sleep   sh
+11    10    10    0 (0/0)         16      run     ps
+9     10    10    3 (3/0)         16      run     cpuburn
+------------------------------------------------------------------
+Active processes: 4 | Total process memory: 68 KB | Aging: 10 ticks
+>>>>>>> e18456e (Updated xv6-riscv)
 ```
 
 ### Key Files
@@ -442,196 +471,270 @@ mmaptest: ALL TESTS PASSED
 
 # 6. System Call Tracing — `trace()` and `strace`
 
-Processes can trace specific or all system calls at runtime via `trace(uint64 mask)` (`SYS_trace = 27`). Because `p->trace_mask` is copied during `fork()`, `strace` seamlessly traces child commands and pipelines.
+### In Simple Words
+
+When debugging a program, it helps to see **every request it sends to the operating system** (like opening files, reading, writing, or creating processes). `strace` acts like a live activity log for a command: you run `strace` in front of any program and watch every system call and its return value — without changing a single line of that program's code.
 
 ```mermaid
-sequenceDiagram
-    participant User as "strace (-a / -e / -c)"
-    participant Disp as "syscall() Dispatcher"
-    participant Hand as "Kernel Handler (sys_*)"
-    participant Cons as "Console Output"
-
-    User->>Disp: 1. trace(mask) configures bitmask & optional filter mode
-    User->>Disp: 2. exec(target_program, argv)
-    loop Every System Call Invoked by Target
-        User->>Disp: 3. ecall (syscall number in register a7)
-        Disp->>Hand: 4. Invoke syscalls[num]()
-        Hand-->>Disp: 5. Return result to register a0
-        alt Bit 'num' matches trace_mask (and ret < 0 if -e error filter set)
-            Disp->>Cons: 6. Log "PID - syscall name -> return_value"
-        end
-        Disp-->>User: 7. Resume user program
-    end
-    Note over User,Cons: Mini-Extension (-c) prints aggregated call & error summary table on exit
+flowchart TD
+    A["1. User runs strace (-a, -e, -c, or mask) before a command"] --> B["2. Save trace filter settings in the process"]
+    B --> C["3. Start the target program with exec()"]
+    C --> D["4. Program makes a system call (like open, read, or write)"]
+    D --> E["5. Kernel runs the handler and checks its return value"]
+    E --> F{"6. Which trace mode is active?"}
+    F -- "Normal (-a or mask)" --> G["Print every matching call and its result"]
+    F -- "Errors only (-e)" --> H["Print only if the call failed (result < 0)"]
+    F -- "Summary (-c)" --> I["Count calls & errors, then print a neat table on exit"]
 ```
 
-### Example
+### How It Works
+
+* **Tracing rule stays across `fork()` and `exec()` (`kernel/proc.c`):** Once `strace` enables tracing, the target command (and any child processes it spawns) inherits the trace rule automatically.
+* **Single checkpoint (`kernel/syscall.c`):** Every system call passes through `syscall()`, so one central check logs the syscall name and return value cleanly.
+* **Safe bitmask & mode setup (`user/strace.c`):** Supports `-a` for all calls, `-e` for errors only, `-c` for a summary table, or any decimal bitmask number.
+
+### Mini-Extension: Error-Only Filter (`strace -e`) & Summary Table (`strace -c`)
+
+* **`strace -e`:** Hides all successful calls and prints **only failing system calls** (`result < 0`), making missing files or bad arguments jump out immediately.
+* **`strace -c`:** Collects counts quietly while the program runs and prints a **ranked summary table** of total calls and errors when the program exits.
+
+### Live Demo & Output
 
 ```text
-$ strace -a echo hello
-4: syscall exec -> 2
+$ strace -e cat no_such_file
+4: syscall open -> -1
+cat: cannot open no_such_file
+
+$ strace -c echo hello
 hello
-4: syscall write -> 5
-4: syscall write -> 1
+
+--- strace summary (PID 5: echo) ---
+SYSCALL           CALLS   ERRORS
+----------------  ------  ------
+write             2       0
+exec              1       0
+exit              1       0
+--------------------------------
+Total syscalls: 4 | Total errors: 0
 ```
 
-### Mini-Extension: Failure-Only Filter (`strace -e`) & Summary Mode (`strace -c`)
+### Key Files
 
-* Adds `-e` to log **only failing system calls** (`return_value < 0`) for rapid debugging, and `-c` to print a clean post-execution summary table showing call counts and failure totals per system call.
-
-### Relevant Files
-
-* `kernel/proc.h`, `kernel/proc.c`, `kernel/syscall.h`, `kernel/syscall.c`, `kernel/sysproc.c`, `user/strace.c`
+* `kernel/param.h`, `kernel/proc.h`, `kernel/proc.c`, `kernel/syscall.h`, `kernel/syscall.c`, `kernel/sysproc.c`, `user/strace.c`
 
 ---
 
-# 7. System Resource Diagnostics — `sysinfo()` and `free`
+# 7. System Health & Memory Diagnostics — `sysinfo()` and `free`
 
-The `sysinfo(struct sysinfo *)` system call (`SYS_sysinfo = 28`) gathers live physical memory, process table, and uptime metrics from across the kernel into a single user-space snapshot.
+### In Simple Words
+
+`free` gives you an instant **system health check** — similar to checking RAM and open apps on your computer. With a single `sysinfo()` call, the kernel gathers live memory stats, shared pages, open files, active processes, and system uptime, then prints them in an easy-to-read summary.
 
 ```mermaid
 flowchart TD
-    U["1. User runs 'free' (or 'free -m') -> calls sysinfo(&info)"] --> S["2. Kernel enters sys_sysinfo()"]
-
-    S --> M["kalloc.c: kfreemem() & ktotalmem() (Free & Total RAM)"]
-    S --> P["proc.c: nproc_active() (Active Processes)"]
-    S --> T["trap.c: ticks under tickslock (System Uptime)"]
-    S --> EXT["Mini-Extension: Count open files (ftable) & COW shared pages (refcnt > 1)"]
-
-    M --> Pack["3. Populate struct sysinfo in kernel"]
-    P --> Pack
-    T --> Pack
-    EXT --> Pack
-
-    Pack --> Out["4. copyout() to user space & format KB or '-m' MB / % summary"]
+    A["1. User runs 'free' or 'free -m'"] --> B["2. Program asks kernel for sysinfo()"]
+    B --> C["3. Gather RAM stats (Total & Free pages)"]
+    B --> D["4. Count active processes & system uptime"]
+    B --> E["5. Bonus: Count open files & shared COW pages"]
+    C --> F["6. Pack all numbers into one struct sysinfo"]
+    D --> F
+    E --> F
+    F --> G["7. Send to user space and print in KB or MB (%)"]
 ```
 
-### Example
+### How It Works
+
+* **RAM & shared page check (`kernel/kalloc.c`):** `ktotalmem()` and `kfreemem()` measure total and free memory, while `ksharedpages()` counts pages currently shared via Copy-on-Write.
+* **Kernel table counts (`kernel/proc.c`, `kernel/file.c`):** `nproc_active()` counts running/sleeping processes, and `nopen_files()` counts open file handles in the system file table.
+* **Clean user formatting (`user/free.c`):** Calculates memory used and prints percentages cleanly (`<1%` when tiny but non-zero).
+
+### Mini-Extension: Megabyte View (`free -m`) & Extra Kernel Metrics
+
+* Adds **`free -m`** to display RAM in megabytes alongside the usage percentage, and expands `struct sysinfo` to report **Shared COW pages** and **Open files (`used / 100`)**.
+
+### Live Demo & Output
 
 ```text
+$ free
+Total memory:  128668 KB (32167 pages)
+Used memory:   804 KB (201 pages, <1%)
+Free memory:   127864 KB (31966 pages)
+Shared COW:    0 pages | Open files: 1 / 100
+Active procs:  3 / 64  | Uptime: 2 ticks
+
 $ free -m
-Total memory:  127 MB (32735 pages)
-Used memory:   1 MB   (81 pages, <1%)
-Free memory:   126 MB (32654 pages)
-Shared COW:    14 pages | Open files: 3 / 100
-Active procs:  3 / 64   | Uptime: 42 ticks
+Total memory:  126 MB (32167 pages)
+Used memory:   1 MB (201 pages, <1%)
+Free memory:   125 MB (31966 pages)
+Shared COW:    0 pages | Open files: 1 / 100
+Active procs:  3 / 64  | Uptime: 3 ticks
 ```
 
-### Mini-Extension: Megabyte Formatting (`free -m`) & Kernel Table Metrics
+### Key Files
 
-* Extends `struct sysinfo` with system-wide active open file descriptors (`nfiles` from `ftable`) and shared Copy-on-Write frames (`shared_pages`), while adding `free -m` to display memory in megabytes with utilization percentages.
-
-### Relevant Files
-
-* `kernel/sysinfo.h`, `kernel/kalloc.c`, `kernel/proc.c`, `kernel/sysproc.c`, `user/free.c`
+* `kernel/sysinfo.h`, `kernel/kalloc.c`, `kernel/file.c`, `kernel/proc.c`, `kernel/sysproc.c`, `user/free.c`
 
 ---
 
-# 8. Parent Process Inspection — `getppid()` and `pstree`
+# 8. Process Family Tree — `getppid()` and `pstree`
 
-NexusXv6 adds `getppid()` (`SYS_getppid = 29`) to query the caller's parent PID safely under `wait_lock`, and `ptree()` (`SYS_ptree = 30`) to snapshot the process table and render the live parent-child process tree.
+### In Simple Words
+
+Every process (except the very first `init` process) is created by a parent process using `fork()`. `pstree` draws a visual **family tree** showing who started whom — for example, `init` starts the shell `sh`, and `sh` starts whatever command you just typed. Each process also shows how many direct children it currently has.
 
 ```mermaid
 flowchart TD
-    subgraph Flow["Kernel Snapshot & Subtree Filtering"]
-        A["1. User runs 'pstree' or Mini-Extension 'pstree root_pid'"] --> B["2. Acquire wait_lock & snapshot active PIDs + PPIDs"]
-        B --> C["3. Count direct children per process & start DFS at root_pid"]
+    subgraph Collect["Step 1: Take a Safe Snapshot"]
+        A["1. User runs 'pstree' or 'pstree pid'"] --> B["2. Lock process links briefly and copy PID + Parent PID"]
+        B --> C["3. Count how many children each process has"]
     end
 
-    subgraph Tree["Example Process Hierarchy (with Child Counts)"]
-        P1["PID 1: init (kids=1, sleep)"] --> P2["PID 2: sh (kids=2, sleep)"]
-        P2 --> P4["PID 4: cpuburn (kids=0, runble)"]
-        P2 --> P5["PID 5: pstree (kids=0, run)"]
+    subgraph Display["Step 2: Draw the Family Tree"]
+        D["PID 1: init (prio=10, state=sleep, kids=1)"] --> E["PID 2: sh (prio=10, state=sleep, kids=1)"]
+        E --> F["PID 8: pstree (prio=10, state=run, kids=0)"]
     end
 
-    C -. "Renders targeted tree" .-> P1
+    C -. "Print full tree or chosen subtree" .-> D
 ```
 
-### Example
+### How It Works
+
+* **Safe parent lookup (`kernel/proc.c`):** `kgetppid()` uses `wait_lock` to safely read the parent's PID without race conditions.
+* **Snapshot before printing (`proctree()`):** Copies active processes into a temporary buffer under `wait_lock`, releases the locks, and then prints the indented tree cleanly.
+* **No ugly padding or missing counts:** Cleanly formats process states (`sleep`, `run`, `runble`) and shows `kids=N` on every line.
+
+### Mini-Extension: Subtree Filter (`pstree <pid>`) & Child Count Badge
+
+* Lets you pass a PID (such as **`pstree 2`**) to focus only on that process and its descendants, and displays **`kids=N`** next to every process so you can immediately see which processes spawned children.
+
+### Live Demo & Output
 
 ```text
+$ pstree
+Current PID: 8 | Parent PID: 2
+Process Hierarchy:
+[1] init (prio=10, state=sleep, kids=1)
+  |-- [2] sh (prio=10, state=sleep, kids=1)
+    |-- [8] pstree (prio=10, state=run, kids=0)
+
 $ pstree 2
-Subtree Root PID: 2 (children=2)
-[2] sh (prio=10, state=sleep, kids=2)
-  |-- [4] cpuburn (prio=10, state=runble, kids=0)
-  |-- [5] pstree (prio=10, state=run, kids=0)
+Current PID: 9 | Parent PID: 2
+Subtree Root PID: 2 (kids=1)
+[2] sh (prio=10, state=sleep, kids=1)
+  |-- [9] pstree (prio=10, state=run, kids=0)
 ```
 
-### Mini-Extension: Targeted Subtree Root (`pstree <pid>`) & Child Count Badge
-
-* Allows passing an optional `root_pid` argument (`pstree 2`) so `ptree()` renders only the descendant hierarchy beneath a chosen parent process and annotates each node with its active child count (`kids=N`).
-
-### Relevant Files
+### Key Files
 
 * `kernel/proc.c`, `kernel/sysproc.c`, `kernel/syscall.h`, `user/pstree.c`
 
 ---
 
-# 9. Priority Aging for Starvation Prevention
+# 9. Priority Aging (Starvation Prevention) — `agetest`
 
-Pure static priority scheduling can starve low-priority (`priority = 20`) processes when high-priority CPU-bound tasks stay runnable. NexusXv6 prevents starvation through **dynamic priority aging** inside `scheduler()`.
+### In Simple Words
+
+In a strict priority scheduler, a low-priority program (`priority = 20`) might **wait forever ("starve")** if high-priority programs (`priority = 3`) keep hogging all the CPU cores. **Priority aging** solves this fairly: the longer a ready process waits in line, the better its *temporary* priority becomes — just like a ticket queue where waiting customers gradually move up until it is their turn.
 
 ```mermaid
 flowchart TD
-    CFG["Mini-Extension: setaging(ticks) dynamically tunes AGING_THRESHOLD at runtime"] -.-> C
-    A["1. Process enters RUNNABLE (record last_run_tick = ticks)"] --> B["2. Scheduler computes wait time: waited = ticks - last_run_tick"]
-    B --> C["3. Compute aging boost: boost = waited / AGING_THRESHOLD"]
-    C --> D["4. Effective Priority: eff_prio = max(1, base_priority - boost)"]
-    D --> EXP["Mini-Extension: Expose live eff_prio alongside static base_priority in ps"]
-    D --> E["5. Select RUNNABLE process with best eff_prio (tie-break: longest waited)"]
-    E --> F["6. Process runs on CPU, then resets last_run_tick = ticks"]
+    A["1. Process waits in the ready queue"] --> B["2. Check how many ticks it has waited"]
+    B --> C["3. Bonus boost = waited ticks / aging threshold"]
+    C --> D["4. Effective priority = Base priority - boost (capped at 1)"]
+    D --> E["5. Scheduler picks the process with the best effective priority"]
+    E --> F["6. Process gets CPU time, then its wait timer resets"]
+    T["Bonus: Tune aging threshold live with 'agetest set N'"] -. "Changes threshold" .-> C
+    D -. "EFF column shown live" .-> P["Visible in 'ps'"]
 ```
 
-### Key Properties
+### How It Works
 
-* **Base priority preserved:** `p->priority` remains unchanged while `eff_prio` temporarily improves the longer a runnable task waits.
-* **Verified under SMP saturation:** `agetest` pins all CPU cores with `priority = 3` hogs and confirms a `priority = 20` worker still completes promptly.
+* **Original priority stays intact (`kernel/proc.c`):** `p->priority` never permanently changes — only the temporary `eff_prio` improves while the process is waiting (`RUNNABLE`).
+* **Fair tie-breaking:** If two processes have the same effective priority, the one that has waited longer wins.
+* **Stress-tested (`user/agetest.c`):** Launches 4 high-priority CPU hogs (`prio = 3`) across all CPU cores plus 1 low-priority worker (`prio = 20`) and confirms the low-priority worker still finishes promptly.
 
-### Mini-Extension: Live `EFF-PRIO` Visibility & Runtime Aging Tuning (`setaging`)
+### Mini-Extension: Live `EFF` Column in `ps` & Runtime Tuning (`setaging`)
 
-* Exposes each runnable process's dynamically boosted `eff_prio` next to its static `base_priority` for live inspection, and adds `setaging(int ticks)` so evaluators can adjust `AGING_THRESHOLD` on the fly without recompiling the kernel.
+* Shows each process's live **effective priority (`EFF`)** right next to its base priority (`PRIO`) in `ps`, and adds **`setaging(ticks)`** (usable via `agetest get` / `agetest set <ticks>`) to adjust how fast waiting processes get boosted without recompiling.
 
-### Relevant Files
+### Live Demo & Output
 
-* `kernel/param.h`, `kernel/proc.h`, `kernel/proc.c`, `user/agetest.c`
+```text
+$ agetest
+agetest: starting priority aging verification
+[Test 1] Runtime setaging() verified (current threshold: 10 ticks)
+[Test 2] Starting 4 high-priority hogs (prio 3) and 1 low-priority worker (prio 20)
+         Low-priority worker (PID 16, prio 20) completed without starvation
+agetest: ALL TESTS PASSED
+
+$ agetest set 5
+Aging threshold changed: 10 -> 5 ticks
+```
+
+### Key Files
+
+* `kernel/param.h`, `kernel/proc.h`, `kernel/proc.c`, `kernel/sysproc.c`, `user/agetest.c`
 
 ---
 
-# 10. Per-Process System Call Accounting — `getsyscallcount()`
+# 10. Per-Process System Call Counter — `getsyscallcount()` and `syscount`
 
-Every valid system call increments `p->syscall_count` in `syscall()`. User programs can inspect their own count (`getsyscallcount(0)`) or query any active PID (`getsyscallcount(pid)`, `SYS_getsyscallcount = 31`).
+### In Simple Words
+
+Every time a program asks the kernel to do something — read a file, print text, or check its PID — our kernel ticks up a counter for that process. `syscount` lets you check **how many total system calls a process has made**, and with `-v`, it even ranks **which system calls that program used the most**.
 
 ```mermaid
 flowchart TD
-    subgraph Track["Automatic Kernel Counting (syscall.c)"]
-        S1["Any process invokes syscall 'num'"] --> S2["Increment p->syscall_count++"]
-        S2 --> S2M["Mini-Extension: Increment per-syscall bucket p->syscall_freq[num]++"]
-        S2M --> S3["Execute target sys_*() handler"]
+    subgraph Count["Inside the Kernel (Every System Call)"]
+        K1["1. Program makes a system call (like read, write, or fork)"] --> K2["2. Add +1 to total syscall_count"]
+        K2 --> K3["3. Bonus: Add +1 to that specific syscall's bucket"]
+        K3 --> K4["4. Run the system call and record if it returned an error"]
     end
 
-    subgraph Query["On-Demand Inspection (syscount utility)"]
-        Q1["User runs 'syscount [pid]' or 'syscount -v [pid]'"] --> Q2["Read total count (and top-called syscalls when '-v' is set)"]
+    subgraph View["Viewing Counts from User Space"]
+        U1["User runs 'syscount [pid]' or 'syscount -v [pid]'"] --> U2["Read total count (and ranked top syscalls if -v)"]
     end
 
-    S2 -. "Total" .-> Q2
-    S2M -. "Per-syscall breakdown" .-> Q2
+    K2 -. "Total" .-> U2
+    K3 -. "Breakdown table" .-> U2
 ```
 
-### Example
+### How It Works
+
+* **Zero overhead tracking (`kernel/syscall.c`):** Inside `syscall()`, valid calls simply increment `p->syscall_count` and `p->syscall_freq[num]`.
+* **Safe per-process snapshot (`kernel/proc.c`):** `getsyscall_snapshot()` copies a process's counters under `p->lock` so live shells like `sh` can be inspected safely.
+* **Three easy modes (`user/syscount.c`):** Run `syscount` for a quick self-test (`5x getpid()`), `syscount <pid>` for a total count, or `syscount -v <pid>` for the ranked table.
+
+### Mini-Extension: Ranked Syscall Breakdown (`syscount -v`)
+
+* Tracks per-syscall call and error counts inside `struct proc` so **`syscount -v [pid]`** prints the **top 5 most-used syscalls** plus a sorted breakdown table showing `SYSCALL`, `CALLS`, and `ERRORS`.
+
+### Live Demo & Output
 
 ```text
+$ syscount
+PID 20 syscall count before 5x getpid(): 3
+PID 20 syscall count after  5x getpid(): 9
+
 $ syscount -v 2
-Process 2 total syscalls: 28
-Top syscalls: read (14), write (8), fork (3), wait (3)
+Process 2 (sh) total syscalls: 231
+Top syscalls: read (183), wait (15), fork (15), write (15), open (1)
+
+SYSCALL           CALLS   ERRORS
+----------------  ------  ------
+read              183     0
+wait              15      0
+fork              15      0
+write             15      0
+open              1       0
+exec              1       0
+close             1       0
+--------------------------------
 ```
 
-### Mini-Extension: Per-Syscall Frequency Breakdown (`syscount -v`)
+### Key Files
 
-* Maintains a lightweight per-process array `p->syscall_freq[44]` in `struct proc`, enabling `syscount -v [pid]` to display not just the grand total, but also the top/most frequently invoked system calls by name.
-
-### Relevant Files
-
-* `kernel/proc.h`, `kernel/proc.c`, `kernel/syscall.c`, `kernel/sysproc.c`, `user/syscount.c`
+* `kernel/param.h`, `kernel/proc.h`, `kernel/proc.c`, `kernel/syscall.h`, `kernel/syscall.c`, `kernel/sysproc.c`, `user/syscount.c`
 
 ---
 
