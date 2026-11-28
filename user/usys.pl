@@ -60,32 +60,12 @@ entry("getcpuid");
 entry("setprocname");
 entry("getpriority");
 entry("getcowfaults");
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-entry("tracemode");
-entry("setaging");
-entry("syscallstats");
->>>>>>> e18456e (Updated xv6-riscv)
-=======
-entry("tracemode");
-entry("setaging");
-entry("syscallstats");
->>>>>>> b8719fe (updated project)
-=======
-=======
->>>>>>> 6400aec (Implemented modueles)
 entry("tracemode");
 entry("setaging");
 entry("syscallstats");
 entry("setaffinity");
 entry("getprocname");
 entry("findproc");
-<<<<<<< HEAD
->>>>>>> bc531db (Implemented modules 11-15)
-=======
 entry("lseek");
 entry("symlink");
 entry("readlink");
@@ -94,4 +74,3 @@ entry("sigreturn");
 entry("dup2");
 entry("dup3");
 entry("statfs");
->>>>>>> 6400aec (Implemented modueles)

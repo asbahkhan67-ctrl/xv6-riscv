@@ -58,23 +58,9 @@ main(void)
     exit(1);
   }
   if (pid1 == 0) {
-<<<<<<< HEAD
-<<<<<<< HEAD
-    for (i = 1; i <= 3; i++) {
-      printf("Worker A (PID %d): step %d -> sched_yield()\n", getpid(), i);
-      sched_yield();
-    }
-    exit(0);
-=======
     close(b_to_a[1]);
     close(a_to_b[0]);
     run_worker("A", b_to_a[0], a_to_b[1], 1);
->>>>>>> bc531db (Implemented modules 11-15)
-=======
-    close(b_to_a[1]);
-    close(a_to_b[0]);
-    run_worker("A", b_to_a[0], a_to_b[1], 1);
->>>>>>> 6400aec (Implemented modueles)
   }
 
   pid2 = fork();
@@ -84,23 +70,9 @@ main(void)
     exit(1);
   }
   if (pid2 == 0) {
-<<<<<<< HEAD
-<<<<<<< HEAD
-    for (i = 1; i <= 3; i++) {
-      printf("Worker B (PID %d): step %d -> sched_yield()\n", getpid(), i);
-      sched_yield();
-    }
-    exit(0);
-=======
     close(a_to_b[1]);
     close(b_to_a[0]);
     run_worker("B", a_to_b[0], b_to_a[1], 0);
->>>>>>> bc531db (Implemented modules 11-15)
-=======
-    close(a_to_b[1]);
-    close(b_to_a[0]);
-    run_worker("B", a_to_b[0], b_to_a[1], 0);
->>>>>>> 6400aec (Implemented modueles)
   }
 
   // Hand the first baton to Worker A, then close unused pipe ends.

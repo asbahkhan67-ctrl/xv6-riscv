@@ -111,27 +111,11 @@ struct proc {
   uint64 syscall_count; // Total system calls invoked
   uint32 syscall_freq[MAX_SYSCALLS]; // Per-syscall invocation counts
   uint32 syscall_errs[MAX_SYSCALLS]; // Per-syscall failure counts (return < 0)
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-  uint64 ctime;         // Creation timestamp (ticks)
-  uint64 last_run_tick; // Last tick process ran or became runnable
-=======
-  uint64 ctime;                      // Creation timestamp (ticks)
-  uint64 last_run_tick;              // Last tick process ran or became runnable
->>>>>>> b8719fe (updated project)
-=======
-=======
->>>>>>> 6400aec (Implemented modueles)
   uint64 ctime;                      // Creation timestamp (ticks)
   uint64 last_run_tick;              // Last tick process ran or became runnable
   uint64 ctx_switches; // Number of times scheduler dispatched this process
   uint64 yield_count;  // Number of voluntary sched_yield() calls
   uint64 cpu_affinity; // Allowed RISC-V hart bitmask (~0ULL = all harts)
-<<<<<<< HEAD
->>>>>>> bc531db (Implemented modules 11-15)
-=======
->>>>>>> 6400aec (Implemented modueles)
 
   // wait_lock must be held when using this:
   struct proc *parent; // Parent process

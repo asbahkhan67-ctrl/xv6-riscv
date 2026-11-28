@@ -41,22 +41,8 @@ main(int argc, char *argv[])
     exit(1);
   }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-  uint64 used = (info.totalmem >= info.freemem) ? (info.totalmem - info.freemem) : 0;
-=======
   uint64 used =
     (info.totalmem >= info.freemem) ? (info.totalmem - info.freemem) : 0;
->>>>>>> b8719fe (updated project)
-=======
-  uint64 used =
-    (info.totalmem >= info.freemem) ? (info.totalmem - info.freemem) : 0;
->>>>>>> bc531db (Implemented modules 11-15)
-=======
-  uint64 used =
-    (info.totalmem >= info.freemem) ? (info.totalmem - info.freemem) : 0;
->>>>>>> 6400aec (Implemented modueles)
   uint64 total_pages = info.totalmem / PGSIZE;
   uint64 used_pages = used / PGSIZE;
   uint64 free_pages = info.freemem / PGSIZE;
@@ -74,25 +60,6 @@ main(int argc, char *argv[])
     printf(")\n");
     printf("Free memory:   %lu MB (%lu pages)\n", free_mb, free_pages);
   } else {
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-    printf("Total memory:  %lu KB (%lu pages)\n", info.totalmem / 1024, total_pages);
-    printf("Used memory:   %lu KB (%lu pages, ", used / 1024, used_pages);
-    print_pct(used, info.totalmem);
-    printf(")\n");
-    printf("Free memory:   %lu KB (%lu pages)\n", info.freemem / 1024, free_pages);
-  }
-
-  printf("Shared COW:    %lu pages | Open files: %lu / %d\n",
-         info.shared_pages, info.nfiles, NFILE);
-  printf("Active procs:  %lu / %d  | Uptime: %lu ticks\n",
-         info.nproc, NPROC, info.uptime);
-=======
-=======
->>>>>>> bc531db (Implemented modules 11-15)
-=======
->>>>>>> 6400aec (Implemented modueles)
     printf("Total memory:  %lu KB (%lu pages)\n", info.totalmem / 1024,
            total_pages);
     printf("Used memory:   %lu KB (%lu pages, ", used / 1024, used_pages);
@@ -106,13 +73,6 @@ main(int argc, char *argv[])
          info.nfiles, NFILE);
   printf("Active procs:  %lu / %d  | Uptime: %lu ticks\n", info.nproc, NPROC,
          info.uptime);
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> b8719fe (updated project)
-=======
->>>>>>> bc531db (Implemented modules 11-15)
-=======
->>>>>>> 6400aec (Implemented modueles)
 
   exit(0);
 }

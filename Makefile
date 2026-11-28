@@ -167,14 +167,11 @@ UPROGS=\
 	$U/_cpuinfo\
 	$U/_renametest\
 	$U/_pidof\
-<<<<<<< HEAD
-=======
 	$U/_lseektest\
 	$U/_symlinktest\
 	$U/_alarmtest\
 	$U/_dup2test\
 	$U/_df\
->>>>>>> 6400aec (Implemented modueles)
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)

@@ -118,30 +118,11 @@ int             proctree(int);
 int             setpriority(int, int);
 int             getpriority(int);
 int             getcowfaults_proc(int);
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-int             setaging(int);
-int             getsyscall_snapshot(int, int *, char *, uint64 *, uint32 *, uint32 *);
->>>>>>> e18456e (Updated xv6-riscv)
-=======
-int             setaging(int);
-int             getsyscall_snapshot(int, int *, char *, uint64 *, uint32 *, uint32 *);
->>>>>>> b8719fe (updated project)
-=======
-=======
->>>>>>> 6400aec (Implemented modueles)
 int             setaging(int);
 int             getsyscall_snapshot(int, int *, char *, uint64 *, uint32 *, uint32 *);
 int             setaffinity_proc(int, uint64);
 int             getprocname_proc(int, uint64, int);
 int             findproc_by_name(const char *, uint64, int);
-<<<<<<< HEAD
->>>>>>> bc531db (Implemented modules 11-15)
-=======
->>>>>>> 6400aec (Implemented modueles)
 uint64          nproc_active(void);
 int             kgetppid(void);
 int             getsyscallcount_proc(int);

@@ -30,60 +30,21 @@ The implementation targets **64-bit RISC-V (`rv64gc`)** and runs on **QEMU (`vir
 | **3** | **CPU time tracking (`cpuburn`)** | Splits CPU time into user work vs. kernel work (`U/K` ticks) |
 | **4** | **Copy-on-Write memory (COW)** | Counts how many pages actually had to be copied (`cow_faults`) |
 | **5** | **Memory mapping (`mmap` & `munmap`)** | Anonymous zero-filled memory (`MAP_ANONYMOUS`) without needing a file |
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-| **6** | **System call tracing with `trace()` and `strace`** | Error-only filtering (`strace -e`) & post-run syscall summary table (`strace -c`) |
-| **7** | **System resource diagnostics (`sysinfo` & `free`)** | Human-readable MB / `%` mode (`free -m`) + open file & shared COW page counts |
-| **8** | **Parent process inspection (`getppid` & `pstree`)** | Targeted subtree root filtering (`pstree [pid]`) & per-node child count badge |
-| **9** | **Priority aging for starvation prevention** | Live effective-priority reporting (`EFF-PRIO`) & runtime tunable `setaging(ticks)` |
-| **10** | **Per-process syscall accounting (`getsyscallcount`)** | Per-syscall frequency breakdown & top-invoked syscall (`syscount -v [pid]`) |
-=======
-=======
->>>>>>> b8719fe (updated project)
-=======
->>>>>>> bc531db (Implemented modules 11-15)
-=======
->>>>>>> 6400aec (Implemented modueles)
 | **6** | **System call tracing (`strace`)** | Show only failed calls (`-e`) or print a summary table (`-c`) |
 | **7** | **System health & memory (`free`)** | Megabyte view (`free -m`) plus open files & shared COW page counts |
 | **8** | **Process family tree (`pstree`)** | Filter by a chosen root PID (`pstree <pid>`) and show child counts (`kids=N`) |
 | **9** | **Anti-starvation priority aging (`agetest`)** | Live effective priority (`EFF`) in `ps` and runtime tuning (`agetest set`) |
 | **10** | **Syscall counter (`syscount`)** | Ranked breakdown of top syscalls and errors (`syscount -v [pid]`) |
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> e18456e (Updated xv6-riscv)
-=======
->>>>>>> b8719fe (updated project)
-| **11** | **Process execution benchmarking (`waitx` & `time`)** | CPU utilization percentage (`CPU%`) & context-switch count (`ctx_switches`) |
-| **12** | **Clean system power management (`halt` & `reboot`)** | Delayed countdown timer (`shutdown [sec]`) with console broadcast warning |
-| **13** | **Voluntary CPU yielding (`sched_yield`)** | Per-process voluntary yield counter (`yield_count`) for cooperative profiling |
-| **14** | **Multi-core HART identification (`getcpuid`)** | Soft CPU core affinity mask (`setaffinity`) to pin processes to specific harts |
-| **15** | **Dynamic process naming (`setprocname`)** | Runtime name retrieval (`getprocname`) & process lookup by name (`pidof`) |
-=======
-=======
->>>>>>> 6400aec (Implemented modueles)
 | **11** | **Command timer & benchmark (`time`)** | Shows CPU usage percentage (`CPU%`) and context switches |
 | **12** | **Clean power control (`shutdown` & `reboot`)** | Optional countdown timer (`shutdown <sec>`) with console warning |
 | **13** | **Voluntary CPU yielding (`sched_yield`)** | Tracks how many times each process gave up the CPU (`yield_count`) |
 | **14** | **Multi-core CPU info (`cpuinfo`)** | Pin processes to specific RISC-V cores (`setaffinity`) |
 | **15** | **Dynamic process naming (`setprocname`)** | Read back a process name (`getprocname`) and find PIDs (`pidof`) |
-<<<<<<< HEAD
->>>>>>> bc531db (Implemented modules 11-15)
-| **16** | **Random-access file positioning (`lseek`)** | Sparse seek past EOF with automatic zero-fill upon subsequent `write()` |
-| **17** | **Symbolic links (`symlink` & `O_NOFOLLOW`)** | Target inspection (`readlink`) & arrow target rendering (`link -> target`) in `ls` |
-| **18** | **Periodic user-space timer alarms (`sigalarm`)** | One-shot alarm flag (`SIGALARM_ONESHOT`) & remaining-ticks return value |
-| **19** | **Targeted file descriptor redirection (`dup2`)** | Close-on-exec descriptor protection (`dup3` with `O_CLOEXEC` across `exec()`) |
-| **20** | **File system & disk diagnostics (`statfs` & `df`)** | Buffer cache hit/miss telemetry (`df -c` reporting `bcache` efficiency) |
-=======
 | **16** | **Jump anywhere in a file (`lseek`)** | Seeking past file end zero-fills the gap automatically |
 | **17** | **Shortcuts / symbolic links (`symlink`)** | Inspect shortcut targets (`readlink`) and show `link -> target` in `ls` |
 | **18** | **Timer alarms (`sigalarm` & `sigreturn`)** | One-shot alarms (`SIGALARM_ONESHOT`) and remaining-tick return value |
 | **19** | **Redirect file handles (`dup2`)** | Auto-close private handles on `exec()` (`dup3` with `O_CLOEXEC`) |
 | **20** | **Disk & cache health (`df`)** | Buffer cache hit/miss stats (`df -c`) and self-test (`df -t`) |
->>>>>>> 6400aec (Implemented modueles)
 
 All twenty extensions preserve original xv6 interfaces and full compatibility with the standard `usertests` regression suite.
 
@@ -158,31 +119,27 @@ NexusXv6 is organized into four clean layers. User-space utilities invoke kernel
 
 ```mermaid
 flowchart TD
-    subgraph L1["Layer 1: User-Space Utilities and Verification Suite"]
-        direction LR
-        U_PROC["Process & Scheduling: ps, pstree, setpriority, agetest, yieldtest, renametest, pidof"]
-        U_PROF["Tracing, Signals & Profiling: strace, syscount, time, alarmtest, cpuburn, cpuinfo"]
-        U_MEM["Virtual Memory & Power: cowtest, mmaptest, free, shutdown, reboot"]
-        U_FS["File System & I/O: lseektest, symlinktest, dup2test, df, ln -s, ls"]
+    subgraph L1["Layer 1: User-Space Utilities & Verification Suite"]
+        U_PROC["Process: ps, pstree, setpriority, pidof"]
+        U_PROF["Profiling: strace, syscount, time, alarm"]
+        U_MEM["Memory & Power: cow, mmap, free, halt"]
+        U_FS["File I/O: lseek, symlink, dup2, df, ls"]
     end
 
-    subgraph L2["Layer 2: RISC-V Trap and System Call Boundary"]
-        direction LR
-        SYSC["System Call Dispatcher (syscall.c): Syscalls 1..53, Freq Counters, strace Filters"]
-        TRAP["Trap & Interrupt Handler (trap.c): User/Kernel Ticks, sigalarm Upcalls, Page Faults"]
+    subgraph L2["Layer 2: RISC-V Trap & System Call Boundary"]
+        SYSC["Syscall Dispatcher (syscall.c): 1..53 & strace"]
+        TRAP["Trap Handler (trap.c): Ticks, Alarms & Faults"]
     end
 
     subgraph L3["Layer 3: NexusXv6 Kernel Subsystems"]
-        direction LR
-        K_PROC["Process & Scheduler (proc.c): Priority, Aging, Affinity, waitx, Subtrees, Names"]
-        K_VM["Virtual & Physical Memory (vm.c, kalloc.c): COW Stats, File & Anon mmap, RAM Metrics"]
-        K_FS["VFS & File System (sysfile.c, fs.c, bio.c): Sparse lseek, Symlinks, dup2/dup3/CLOEXEC, statfs"]
+        K_PROC["Scheduler (proc.c): Priority, Aging, Affinity"]
+        K_VM["Memory (vm.c, kalloc.c): COW, mmap, RAM"]
+        K_FS["VFS & Disk (fs.c, bio.c): lseek, Links, dup2, df"]
     end
 
-    subgraph L4["Layer 4: RISC-V 64 SMP and QEMU virt Hardware"]
-        direction LR
-        HW_CPU["Multi-Core RISC-V Harts (Hart 0..2), CLINT Timer & Sv39 MMU"]
-        HW_DEV["VirtIO Block Disk, UART Console & VIRT_TEST Power MMIO (0x100000)"]
+    subgraph L4["Layer 4: RISC-V 64 SMP & QEMU virt Hardware"]
+        HW_CPU["RISC-V Harts 0..2, CLINT Timer & Sv39 MMU"]
+        HW_DEV["VirtIO Disk, UART Console & Power MMIO"]
     end
 
     U_PROC --> SYSC
@@ -190,8 +147,8 @@ flowchart TD
     U_MEM --> SYSC
     U_FS --> SYSC
 
-    U_PROF -. "Timer Interrupts" .-> TRAP
-    U_MEM -. "Page Faults" .-> TRAP
+    U_PROF -.->|Timer Interrupts| TRAP
+    U_MEM -.->|Page Faults| TRAP
 
     SYSC --> K_PROC
     SYSC --> K_VM
@@ -219,12 +176,12 @@ flowchart TD
     A["1. User types 'ps'"] --> B["2. Request enters the kernel"]
     B --> C["3. Check each of the 64 process slots"]
     C --> D{"Is this slot active?"}
-    D -- "No (empty)" --> C
-    D -- "Yes" --> E["4. Read PID, Priority, CPU Time, State, Name"]
+    D -->|No - empty| C
+    D -->|Yes| E["4. Read PID, Priority, CPU Time, State, Name"]
     E --> F["5. Bonus: Calculate memory in KB and add to total"]
     F --> G["6. Print one aligned row in the table"]
     G --> C
-    C -- "Finished all 64 slots" --> H["7. Print active process count and total memory"]
+    C -->|Done scanning 64 slots| H["7. Print active process count and total memory"]
 ```
 
 ### How It Works
@@ -241,24 +198,6 @@ flowchart TD
 
 ```text
 $ ps
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-PID   PRIO  CPU (U/K)       MEM-KB  STATE   NAME
-----  ----  --------------  ------  ------  ----------------
-1     10    0 (0/0)         16      sleep   init
-2     10    0 (0/0)         20      sleep   sh
-3     10    0 (0/0)         16      run     ps
-------------------------------------------------------------
-Active processes: 3 | Total process memory: 52 KB
-=======
-=======
->>>>>>> b8719fe (updated project)
-=======
->>>>>>> bc531db (Implemented modules 11-15)
-=======
->>>>>>> 6400aec (Implemented modueles)
 PID   PRIO  EFF   CPU (U/K)       MEM-KB  STATE   NAME
 ----  ----  ----  --------------  ------  ------  ----------------
 1     10    10    0 (0/0)         16      sleep   init
@@ -266,16 +205,6 @@ PID   PRIO  EFF   CPU (U/K)       MEM-KB  STATE   NAME
 3     10    10    0 (0/0)         16      run     ps
 ------------------------------------------------------------------
 Active processes: 3 | Total process memory: 52 KB | Aging: 10 ticks
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> e18456e (Updated xv6-riscv)
-=======
->>>>>>> b8719fe (updated project)
-=======
->>>>>>> bc531db (Implemented modules 11-15)
-=======
->>>>>>> 6400aec (Implemented modueles)
 ```
 
 ### Key Files
@@ -295,19 +224,19 @@ flowchart TD
     subgraph UserControl["Checking or Changing Priority"]
         U1["Check priority: setpriority pid"] --> U2["Change priority: setpriority pid 1..20"]
         U2 --> U3{"Is priority between 1 and 20?"}
-        U3 -- "No" --> U4["Reject safely with an error message"]
-        U3 -- "Yes" --> U5["Save new priority and show old -> new"]
+        U3 -->|No| U4["Reject safely with an error message"]
+        U3 -->|Yes| U5["Save new priority and show old -> new"]
     end
 
     subgraph Scheduler["How the Scheduler Picks Who Runs Next"]
         S1["1. Scan all 64 processes"] --> S2{"2. Is the process ready to run?"}
-        S2 -- "No" --> S1
-        S2 -- "Yes" --> S3["3. Pick the process with the lowest number (1 = highest)"]
+        S2 -->|No| S1
+        S2 -->|Yes| S3["3. Pick the process with the lowest number (1 = highest)"]
         S3 --> S4["4. Switch the CPU to the winning process"]
         S4 --> S1
     end
 
-    U5 -. "New priority takes effect next round" .-> S3
+    U5 -.->|Takes effect next round| S3
 ```
 
 ### How It Works
@@ -351,12 +280,12 @@ The computer's hardware timer sends a short "tick" signal regularly (about 10 ti
 ```mermaid
 flowchart TD
     A["1. Hardware timer ticks (~10 times per second)"] --> B{"2. Where was the program running?"}
-    B -- "Inside the user program" --> C["Add +1 to User Ticks"]
-    B -- "Inside the OS kernel" --> D["Add +1 to Kernel Ticks"]
+    B -->|User program| C["Add +1 to User Ticks"]
+    B -->|OS kernel| D["Add +1 to Kernel Ticks"]
     C --> E["3. Add +1 to Total CPU Ticks"]
     D --> E
     E --> F["4. Pause process so another process can take a turn"]
-    E -. "Displayed as Total (U/K)" .-> G["Shown live in 'ps' and 'time'"]
+    E -.->|Shown as Total U/K| G["Shown live in 'ps' and 'time'"]
 ```
 
 ### How It Works
@@ -376,25 +305,6 @@ $ cpuburn &
 [cpuburn] PID 9 started (stop with 'kill 9')
 
 $ ps
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-PID   PRIO  CPU (U/K)       MEM-KB  STATE   NAME
-----  ----  --------------  ------  ------  ----------------
-1     10    0 (0/0)         16      sleep   init
-2     5     0 (0/0)         20      sleep   sh
-11    10    0 (0/0)         16      run     ps
-9     10    3 (3/0)         16      run     cpuburn
-------------------------------------------------------------
-Active processes: 4 | Total process memory: 68 KB
-=======
-=======
->>>>>>> b8719fe (updated project)
-=======
->>>>>>> bc531db (Implemented modules 11-15)
-=======
->>>>>>> 6400aec (Implemented modueles)
 PID   PRIO  EFF   CPU (U/K)       MEM-KB  STATE   NAME
 ----  ----  ----  --------------  ------  ------  ----------------
 1     10    10    0 (0/0)         16      sleep   init
@@ -403,16 +313,6 @@ PID   PRIO  EFF   CPU (U/K)       MEM-KB  STATE   NAME
 9     10    10    3 (3/0)         16      run     cpuburn
 ------------------------------------------------------------------
 Active processes: 4 | Total process memory: 68 KB | Aging: 10 ticks
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> e18456e (Updated xv6-riscv)
-=======
->>>>>>> b8719fe (updated project)
-=======
->>>>>>> bc531db (Implemented modules 11-15)
-=======
->>>>>>> 6400aec (Implemented modueles)
 ```
 
 ### Key Files
@@ -437,8 +337,8 @@ flowchart TD
     subgraph Step2["Step 2: Copy Only When Someone Writes"]
         W1["4. Parent or Child tries to write to a shared page"] --> W2["5. CPU pauses the write and calls the kernel"]
         W2 --> W3{"6. Is anyone else still using this page?"}
-        W3 -- "No (only 1 owner left)" --> W4["Unlock writing directly (no copy needed)"]
-        W3 -- "Yes (2+ owners)" --> W5["Allocate a new 4 KB page, copy data, and switch writer to it"]
+        W3 -->|No - only 1 owner| W4["Unlock writing directly (no copy needed)"]
+        W3 -->|Yes - 2+ owners| W5["Allocate a new 4 KB page, copy data, and switch writer to it"]
         W4 --> W6["7. Bonus: Add +1 to COW fault counter and resume"]
         W5 --> W6
     end
@@ -493,14 +393,14 @@ flowchart TD
     subgraph Step2["Step 2: Load Pages Only When Touched"]
         T1["3. Program reads or writes inside the mapped region"] --> T2["4. Kernel catches the first touch"]
         T2 --> T3{"5. File-backed or Anonymous?"}
-        T3 -- "File-backed" --> T4["Allocate 4 KB RAM and load that piece from disk"]
-        T3 -- "Anonymous (Bonus)" --> T5["Allocate 4 KB clean zero-filled RAM (no file needed)"]
+        T3 -->|File-backed| T4["Allocate 4 KB RAM and load that piece from disk"]
+        T3 -->|Anonymous Bonus| T5["Allocate 4 KB clean zero-filled RAM (no file needed)"]
     end
 
     subgraph Step3["Step 3: Clean Up on munmap(), exit(), or exec()"]
         U1{"6. Mapping mode?"}
-        U1 -- "MAP_SHARED (File)" --> U2["Save edits back to the file on disk, then free RAM"]
-        U1 -- "MAP_PRIVATE or Anonymous" --> U3["Discard private edits and free RAM directly"]
+        U1 -->|MAP_SHARED| U2["Save edits back to the file on disk, then free RAM"]
+        U1 -->|MAP_PRIVATE or Anon| U3["Discard private edits and free RAM directly"]
     end
 
     M2 --> T1
@@ -553,9 +453,9 @@ flowchart TD
     C --> D["4. Program makes a system call (like open, read, or write)"]
     D --> E["5. Kernel runs the handler and checks its return value"]
     E --> F{"6. Which trace mode is active?"}
-    F -- "Normal (-a or mask)" --> G["Print every matching call and its result"]
-    F -- "Errors only (-e)" --> H["Print only if the call failed (result < 0)"]
-    F -- "Summary (-c)" --> I["Count calls & errors, then print a neat table on exit"]
+    F -->|Normal -a or mask| G["Print every matching call and its result"]
+    F -->|Errors only -e| H["Print only if the call failed (return below 0)"]
+    F -->|Summary -c| I["Count calls & errors, then print a neat table on exit"]
 ```
 
 ### How It Works
@@ -665,7 +565,7 @@ flowchart TD
         E --> F["PID 8: pstree (prio=10, state=run, kids=0)"]
     end
 
-    C -. "Print full tree or chosen subtree" .-> D
+    C -.->|Full tree or chosen subtree| D
 ```
 
 ### How It Works
@@ -714,8 +614,8 @@ flowchart TD
     C --> D["4. Effective priority = Base priority - boost (capped at 1)"]
     D --> E["5. Scheduler picks the process with the best effective priority"]
     E --> F["6. Process gets CPU time, then its wait timer resets"]
-    T["Bonus: Tune aging threshold live with 'agetest set N'"] -. "Changes threshold" .-> C
-    D -. "EFF column shown live" .-> P["Visible in 'ps'"]
+    T["Bonus: Tune aging threshold live with 'agetest set N'"] -.->|Changes threshold| C
+    D -.->|Live EFF column| P["Visible in 'ps'"]
 ```
 
 ### How It Works
@@ -766,8 +666,8 @@ flowchart TD
         U1["User runs 'syscount [pid]' or 'syscount -v [pid]'"] --> U2["Read total count (and ranked top syscalls if -v)"]
     end
 
-    K2 -. "Total" .-> U2
-    K3 -. "Breakdown table" .-> U2
+    K2 -.->|Total count| U2
+    K3 -.->|Ranked table| U2
 ```
 
 ### How It Works
@@ -864,13 +764,13 @@ Instead of forcing QEMU to quit with keyboard shortcuts (`Ctrl+A`, `X`), our `sh
 ```mermaid
 flowchart TD
     A["1. User runs 'shutdown [sec]' or 'reboot [sec]'"] --> B{"2. Was a delay given?"}
-    B -- "Yes (e.g. shutdown 3)" --> C["Print countdown warning each second"]
-    B -- "No" --> D["Skip countdown"]
+    B -->|Yes - e.g. shutdown 3| C["Print countdown warning each second"]
+    B -->|No| D["Skip countdown"]
     C --> E["3. Flush disk writes safely with sync()"]
     D --> E
     E --> F{"4. Power off or restart?"}
-    F -- "halt()" --> G["Send power-off signal (0x5555) -> QEMU exits cleanly"]
-    F -- "reboot()" --> H["Send reset signal (0x7777) -> QEMU restarts"]
+    F -->|halt| G["Send power-off signal (0x5555) -> QEMU exits cleanly"]
+    F -->|reboot| H["Send reset signal (0x7777) -> QEMU restarts"]
 ```
 
 ### How It Works
@@ -1056,11 +956,11 @@ Standard xv6 only reads and writes files from start to finish in order. `lseek()
 ```mermaid
 flowchart TD
     A["1. Program calls lseek(fd, offset, whence)"] --> B{"2. Is fd a valid open disk file?"}
-    B -- "No" --> ERR1["Return -1"]
-    B -- "Yes" --> C["3. Lock file and compute new position (from start, current, or end)"]
+    B -->|No| ERR1["Return -1"]
+    B -->|Yes| C["3. Lock file and compute new position (from start, current, or end)"]
     C --> D{"4. Is the new position within valid file limits?"}
-    D -- "No" --> ERR2["Unlock file and return -1"]
-    D -- "Yes" --> E["5. Save new position in f->off and return it"]
+    D -->|No| ERR2["Unlock file and return -1"]
+    D -->|Yes| E["5. Save new position in f->off and return it"]
     E --> F["6. Bonus: If moved past end of file, zero-fill the gap on next write()"]
 ```
 
@@ -1106,12 +1006,12 @@ flowchart TD
 
     subgraph Open["Opening a Path in open()"]
         O1["open(path, flags) looks up file"] --> O2{"Is it a symlink?"}
-        O2 -- "No" --> O3["Open normal file or folder"]
-        O2 -- "Yes" --> O4{"Was O_NOFOLLOW set?"}
-        O4 -- "Yes" --> O5["Open shortcut itself without following"]
-        O4 -- "No" --> O6{"Followed fewer than 10 hops?"}
-        O6 -- "No (Loop detected)" --> ERR["Stop and return -1"]
-        O6 -- "Yes" --> O7["Read target name and look up next file"]
+        O2 -->|No| O3["Open normal file or folder"]
+        O2 -->|Yes| O4{"Was O_NOFOLLOW set?"}
+        O4 -->|Yes| O5["Open shortcut itself without following"]
+        O4 -->|No| O6{"Followed fewer than 10 hops?"}
+        O6 -->|No - loop detected| ERR["Stop and return -1"]
+        O6 -->|Yes| O7["Read target name and look up next file"]
         O7 --> O2
     end
 ```
@@ -1199,10 +1099,10 @@ Normal `dup()` picks the next free file slot number automatically. `dup2(oldfd, 
 ```mermaid
 flowchart TD
     A["1. Program calls dup2(oldfd, newfd) or dup3(oldfd, newfd, O_CLOEXEC)"] --> B{"2. Are both slot numbers valid & oldfd open?"}
-    B -- "No" --> ERR["Return -1"]
-    B -- "Yes" --> C{"3. Is oldfd == newfd?"}
-    C -- "Yes (dup2)" --> SAME["Return newfd unchanged"]
-    C -- "No" --> D["4. Increase file reference count first (safe ordering)"]
+    B -->|No| ERR["Return -1"]
+    B -->|Yes| C{"3. Is oldfd == newfd?"}
+    C -->|Yes - dup2| SAME["Return newfd unchanged"]
+    C -->|No| D["4. Increase file reference count first (safe ordering)"]
     D --> E["5. If newfd is already open, close the old handle"]
     E --> F["6. Point newfd to the same file and return newfd"]
     F --> G["7. Bonus: If O_CLOEXEC was set, auto-close newfd on exec()"]
@@ -1327,7 +1227,7 @@ df: ALL TESTS PASSED
 NexusXv6 builds and runs on **WSL2 (Ubuntu)** with `build-essential`, `gcc-riscv64-unknown-elf`, `qemu-system-misc` / `qemu-system-riscv`, `perl`, and `bc`:
 
 ```bash
-cd /mnt/d/Projects/E14/xv6-riscv   # or your cloned xv6-riscv directory
+cd /mnt/d/xv6-riscv   # or your cloned xv6-riscv directory
 make clean
 make
 make qemu

@@ -38,7 +38,7 @@ Required tools:
 Open your **WSL2 Ubuntu** terminal and navigate to the repository:
 
 ```bash
-cd /mnt/d/Projects/E14/xv6-riscv   # or your cloned xv6-riscv directory
+cd /mnt/d/xv6-riscv   # or your cloned xv6-riscv directory
 ```
 
 Verify the directory contents:

@@ -527,16 +527,6 @@ ismapped(pagetable_t pagetable, uint64 va)
   return 0;
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-
-=======
->>>>>>> b8719fe (updated project)
-=======
->>>>>>> bc531db (Implemented modules 11-15)
-=======
->>>>>>> 6400aec (Implemented modueles)
 // Resolve a Copy-on-Write store page fault at virtual address va.
 // If this process is the sole owner of the frame, re-enable write access
 // in place; otherwise allocate a private 4 KB copy and drop the old ref.
@@ -679,20 +669,7 @@ mmap_unmap(struct proc *p, uint64 addr, uint64 length)
   length = PGROUNDUP(length);
 
   for (int i = 0; i < NVMA; i++) {
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-    if (p->vmas[i].used &&
-        addr >= p->vmas[i].addr &&
-=======
     if (p->vmas[i].used && addr >= p->vmas[i].addr &&
->>>>>>> b8719fe (updated project)
-=======
-    if (p->vmas[i].used && addr >= p->vmas[i].addr &&
->>>>>>> bc531db (Implemented modules 11-15)
-=======
-    if (p->vmas[i].used && addr >= p->vmas[i].addr &&
->>>>>>> 6400aec (Implemented modueles)
         addr < p->vmas[i].addr + p->vmas[i].maplen) {
       vma = &p->vmas[i];
       break;

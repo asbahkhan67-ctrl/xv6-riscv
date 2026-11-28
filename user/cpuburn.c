@@ -12,22 +12,8 @@
 int
 main(int argc, char *argv[])
 {
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-  volatile uint64 i; // volatile prevents the compiler from optimizing the loop away
-=======
   volatile uint64
     i; // volatile prevents the compiler from optimizing the loop away
->>>>>>> b8719fe (updated project)
-=======
-  volatile uint64
-    i; // volatile prevents the compiler from optimizing the loop away
->>>>>>> bc531db (Implemented modules 11-15)
-=======
-  volatile uint64
-    i; // volatile prevents the compiler from optimizing the loop away
->>>>>>> 6400aec (Implemented modueles)
   int pid = getpid();
 
   if (argc >= 2) {

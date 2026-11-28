@@ -98,45 +98,16 @@ test_map_private(void)
   if (buf[0] != 'H')
     fail("MAP_PRIVATE unexpectedly modified file on disk");
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-  printf("         Changed memory to 'Xello', disk still has '%s' (isolated)\n", buf);
-=======
   printf("         Changed memory to 'Xello', disk still has '%s' (isolated)\n",
          buf);
->>>>>>> b8719fe (updated project)
-=======
-  printf("         Changed memory to 'Xello', disk still has '%s' (isolated)\n",
-         buf);
->>>>>>> bc531db (Implemented modules 11-15)
-=======
-  printf("         Changed memory to 'Xello', disk still has '%s' (isolated)\n",
-         buf);
->>>>>>> 6400aec (Implemented modueles)
 }
 
 // Test 3: MAP_ANONYMOUS allocates zero-filled pages with no backing file.
 static void
 test_map_anonymous(void)
 {
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-  char *p = mmap(0, 8192, PROT_READ | PROT_WRITE,
-                 MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-=======
   char *p =
     mmap(0, 8192, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
->>>>>>> b8719fe (updated project)
-=======
-  char *p =
-    mmap(0, 8192, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
->>>>>>> bc531db (Implemented modules 11-15)
-=======
-  char *p =
-    mmap(0, 8192, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
->>>>>>> 6400aec (Implemented modueles)
   if (p == (char *)-1)
     fail("MAP_ANONYMOUS mmap failed");
 

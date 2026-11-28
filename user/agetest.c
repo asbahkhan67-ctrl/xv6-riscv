@@ -57,26 +57,9 @@ test_starvation_prevention(void)
   int i, pid;
   volatile uint64 work;
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-  printf("[Test 2] Starting %d high-priority hogs (prio 3) and 1 low-priority worker (prio 20)\n",
-         NHOGS);
-=======
   printf(
     "[Test 2] Starting %d high-priority hogs (prio 3) and 1 low-priority worker (prio 20)\n",
     NHOGS);
->>>>>>> b8719fe (updated project)
-=======
-  printf(
-    "[Test 2] Starting %d high-priority hogs (prio 3) and 1 low-priority worker (prio 20)\n",
-    NHOGS);
->>>>>>> bc531db (Implemented modules 11-15)
-=======
-  printf(
-    "[Test 2] Starting %d high-priority hogs (prio 3) and 1 low-priority worker (prio 20)\n",
-    NHOGS);
->>>>>>> 6400aec (Implemented modueles)
 
   for (i = 0; i < NHOGS; i++) {
     pid = fork();
@@ -117,26 +100,9 @@ test_starvation_prevention(void)
   if (pid != lowpid)
     fail("expected low-priority worker to finish first");
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-  printf("         Low-priority worker (PID %d, prio 20) completed without starvation\n",
-         lowpid);
-=======
   printf(
     "         Low-priority worker (PID %d, prio 20) completed without starvation\n",
     lowpid);
->>>>>>> b8719fe (updated project)
-=======
-  printf(
-    "         Low-priority worker (PID %d, prio 20) completed without starvation\n",
-    lowpid);
->>>>>>> bc531db (Implemented modules 11-15)
-=======
-  printf(
-    "         Low-priority worker (PID %d, prio 20) completed without starvation\n",
-    lowpid);
->>>>>>> 6400aec (Implemented modueles)
 
   for (i = 0; i < NHOGS; i++)
     kill(hogs[i]);

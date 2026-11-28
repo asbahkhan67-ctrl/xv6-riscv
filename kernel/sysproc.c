@@ -518,8 +518,6 @@ sys_findproc(void)
 
   return findproc_by_name(name, upids, max);
 }
-<<<<<<< HEAD
-=======
 
 // Arm or disarm a periodic (or SIGALARM_ONESHOT) user-space timer callback.
 // Returns remaining ticks from any previously scheduled alarm (0 if none).
@@ -565,4 +563,3 @@ sys_sigreturn(void)
   // Return saved a0 so syscall() preserves the interrupted instruction's a0.
   return p->trapframe->a0;
 }
->>>>>>> 6400aec (Implemented modueles)

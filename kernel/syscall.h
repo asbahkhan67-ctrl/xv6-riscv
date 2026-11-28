@@ -38,32 +38,12 @@
 #define SYS_setprocname     37
 #define SYS_getpriority     38
 #define SYS_getcowfaults    39
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-#define SYS_tracemode       40
-#define SYS_setaging        41
-#define SYS_syscallstats    42
->>>>>>> e18456e (Updated xv6-riscv)
-=======
-#define SYS_tracemode       40
-#define SYS_setaging        41
-#define SYS_syscallstats    42
->>>>>>> b8719fe (updated project)
-=======
-=======
->>>>>>> 6400aec (Implemented modueles)
 #define SYS_tracemode       40
 #define SYS_setaging        41
 #define SYS_syscallstats    42
 #define SYS_setaffinity     43
 #define SYS_getprocname     44
 #define SYS_findproc        45
-<<<<<<< HEAD
->>>>>>> bc531db (Implemented modules 11-15)
-=======
 #define SYS_lseek           46
 #define SYS_symlink         47
 #define SYS_readlink        48
@@ -72,4 +52,3 @@
 #define SYS_dup2            51
 #define SYS_dup3            52
 #define SYS_statfs          53
->>>>>>> 6400aec (Implemented modueles)

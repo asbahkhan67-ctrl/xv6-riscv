@@ -27,17 +27,6 @@ usage(void)
 {
   fprintf(2, "Usage:\n");
   fprintf(2, "  strace -a <cmd> [args...]     (trace all system calls)\n");
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-  fprintf(2, "  strace -e <cmd> [args...]     (trace only failing system calls)\n");
-  fprintf(2, "  strace -c <cmd> [args...]     (print call & error summary on exit)\n");
-  fprintf(2, "  strace <mask> <cmd> [args...] (trace syscalls matching decimal bitmask)\n");
-=======
-=======
->>>>>>> bc531db (Implemented modules 11-15)
-=======
->>>>>>> 6400aec (Implemented modueles)
   fprintf(
     2, "  strace -e <cmd> [args...]     (trace only failing system calls)\n");
   fprintf(
@@ -46,13 +35,6 @@ usage(void)
   fprintf(
     2,
     "  strace <mask> <cmd> [args...] (trace syscalls matching decimal bitmask)\n");
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> b8719fe (updated project)
-=======
->>>>>>> bc531db (Implemented modules 11-15)
-=======
->>>>>>> 6400aec (Implemented modueles)
 }
 
 int

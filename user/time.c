@@ -31,17 +31,8 @@ main(int argc, char *argv[])
   status = 0;
   wtime = 0;
   rtime = 0;
-<<<<<<< HEAD
-<<<<<<< HEAD
-  if (waitx(&status, &wtime, &rtime) < 0) {
-=======
   csw = 0;
   if (waitx(&status, &wtime, &rtime, &csw) < 0) {
->>>>>>> bc531db (Implemented modules 11-15)
-=======
-  csw = 0;
-  if (waitx(&status, &wtime, &rtime, &csw) < 0) {
->>>>>>> 6400aec (Implemented modueles)
     fprintf(2, "time: waitx failed\n");
     exit(1);
   }
