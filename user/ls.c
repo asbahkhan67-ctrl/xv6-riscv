@@ -1,27 +1,53 @@
+// ls - List files and directories (displays T_SYMLINK targets as name -> target).
+
 #include "kernel/types.h"
 #include "kernel/stat.h"
 #include "user/user.h"
 #include "kernel/fs.h"
 #include "kernel/fcntl.h"
 
-char *
+static char *
 fmtname(char *path)
 {
   static char buf[DIRSIZ + 1];
   char *p;
 
-  // Find first character after last slash.
   for (p = path + strlen(path); p >= path && *p != '/'; p--)
     ;
   p++;
 
-  // Return blank-padded name.
   if (strlen(p) >= DIRSIZ)
     return p;
   memmove(buf, p, strlen(p));
   memset(buf + strlen(p), ' ', DIRSIZ - strlen(p));
   buf[sizeof(buf) - 1] = '\0';
   return buf;
+}
+
+static void
+print_entry(char *path, struct stat *st)
+{
+  if (st->type == T_SYMLINK) {
+    char target[128];
+    int n = readlink(path, target, sizeof(target));
+    if (n >= 0) {
+      printf("%s -> %s  %d %d %d\n", fmtname(path), target, st->type, st->ino,
+             (int)st->size);
+      return;
+    }
+  }
+  printf("%s %d %d %d\n", fmtname(path), st->type, st->ino, (int)st->size);
+}
+
+static int
+stat_nofollow(const char *path, struct stat *st)
+{
+  int fd = open(path, O_RDONLY | O_NOFOLLOW);
+  if (fd < 0)
+    return -1;
+  int r = fstat(fd, st);
+  close(fd);
+  return r;
 }
 
 void
@@ -32,7 +58,7 @@ ls(char *path)
   struct dirent de;
   struct stat st;
 
-  if ((fd = open(path, O_RDONLY)) < 0) {
+  if ((fd = open(path, O_RDONLY | O_NOFOLLOW)) < 0) {
     fprintf(2, "ls: cannot open %s\n", path);
     return;
   }
@@ -46,7 +72,8 @@ ls(char *path)
   switch (st.type) {
   case T_DEVICE:
   case T_FILE:
-    printf("%s %d %d %d\n", fmtname(path), st.type, st.ino, (int)st.size);
+  case T_SYMLINK:
+    print_entry(path, &st);
     break;
 
   case T_DIR:
@@ -62,11 +89,11 @@ ls(char *path)
         continue;
       memmove(p, de.name, DIRSIZ);
       p[DIRSIZ] = 0;
-      if (stat(buf, &st) < 0) {
+      if (stat_nofollow(buf, &st) < 0) {
         printf("ls: cannot stat %s\n", buf);
         continue;
       }
-      printf("%s %d %d %d\n", fmtname(buf), st.type, st.ino, (int)st.size);
+      print_entry(buf, &st);
     }
     break;
   }

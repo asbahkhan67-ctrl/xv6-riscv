@@ -15,6 +15,7 @@
 #include "sleeplock.h"
 #include "file.h"
 #include "fcntl.h"
+#include "statfs.h"
 
 // Fetch the nth word-sized system call argument as a file descriptor
 // and return both the descriptor and the corresponding struct file.
@@ -45,6 +46,7 @@ fdalloc(struct file *f)
   for (fd = 0; fd < NOFILE; fd++) {
     if (p->ofile[fd] == 0) {
       p->ofile[fd] = f;
+      p->fd_cloexec &= ~(1U << fd);
       return fd;
     }
   }
@@ -103,6 +105,7 @@ sys_close(void)
   if (argfd(0, &fd, &f) < 0)
     return -1;
   myproc()->ofile[fd] = 0;
+  myproc()->fd_cloexec &= ~(1U << fd);
   fileclose(f);
   return 0;
 }
@@ -352,7 +355,36 @@ sys_open(void)
       return -1;
     }
     ilock(ip);
-    if (ip->type == T_DIR && omode != O_RDONLY) {
+
+    // Follow symbolic link chains up to MAXSYMLINK hops unless O_NOFOLLOW is set.
+    int depth = 0;
+    while (ip->type == T_SYMLINK && !(omode & O_NOFOLLOW)) {
+      char target[MAXPATH];
+      int nread;
+
+      if (depth >= MAXSYMLINK) {
+        iunlockput(ip);
+        end_op();
+        return -1;
+      }
+
+      nread = readi(ip, 0, (uint64)target, 0, sizeof(target) - 1);
+      iunlockput(ip);
+      if (nread <= 0) {
+        end_op();
+        return -1;
+      }
+      target[nread] = '\0';
+
+      if ((ip = namei(target)) == 0) {
+        end_op();
+        return -1;
+      }
+      ilock(ip);
+      depth++;
+    }
+
+    if (ip->type == T_DIR && (omode & ~O_NOFOLLOW) != O_RDONLY) {
       iunlockput(ip);
       end_op();
       return -1;
@@ -526,5 +558,205 @@ sys_pipe(void)
     fileclose(wf);
     return -1;
   }
+  return 0;
+}
+
+// Reposition the file offset of an open file descriptor (SEEK_SET/CUR/END).
+uint64
+sys_lseek(void)
+{
+  struct file *f;
+  int offset, whence;
+
+  if (argfd(0, 0, &f) < 0)
+    return -1;
+  argint(1, &offset);
+  argint(2, &whence);
+
+  if (f->type != FD_INODE)
+    return -1;
+
+  ilock(f->ip);
+  long base;
+  switch (whence) {
+  case SEEK_SET:
+    base = 0;
+    break;
+  case SEEK_CUR:
+    base = (long)f->off;
+    break;
+  case SEEK_END:
+    base = (long)f->ip->size;
+    break;
+  default:
+    iunlock(f->ip);
+    return -1;
+  }
+
+  long new_off = base + (long)offset;
+  if (new_off < 0 || new_off > (long)MAXFILE * BSIZE) {
+    iunlock(f->ip);
+    return -1;
+  }
+
+  f->off = (uint)new_off;
+  f->sparse_pending = (new_off > (long)f->ip->size) ? 1 : 0;
+  iunlock(f->ip);
+  return (uint64)new_off;
+}
+
+// Create a symbolic link at 'path' pointing to 'target'.
+uint64
+sys_symlink(void)
+{
+  char target[MAXPATH], path[MAXPATH];
+  struct inode *ip;
+
+  if (argstr(0, target, MAXPATH) < 0 || argstr(1, path, MAXPATH) < 0)
+    return -1;
+
+  int len = strlen(target);
+  if (len <= 0 || path[0] == '\0')
+    return -1;
+
+  begin_op();
+  ip = create(path, T_SYMLINK, 0, 0);
+  if (ip == 0) {
+    end_op();
+    return -1;
+  }
+
+  if (writei(ip, 0, (uint64)target, 0, len) != len) {
+    ip->nlink = 0;
+    iupdate(ip);
+    iunlockput(ip);
+    end_op();
+    return -1;
+  }
+
+  iunlockput(ip);
+  end_op();
+  return 0;
+}
+
+// Read the stored target path from a T_SYMLINK inode without opening an FD.
+uint64
+sys_readlink(void)
+{
+  char path[MAXPATH], target[MAXPATH];
+  uint64 ubuf;
+  int bufsiz;
+  struct inode *ip;
+  struct proc *p = myproc();
+
+  if (argstr(0, path, MAXPATH) < 0)
+    return -1;
+  argaddr(1, &ubuf);
+  argint(2, &bufsiz);
+
+  if (bufsiz <= 0)
+    return -1;
+
+  begin_op();
+  if ((ip = namei(path)) == 0) {
+    end_op();
+    return -1;
+  }
+
+  ilock(ip);
+  if (ip->type != T_SYMLINK) {
+    iunlockput(ip);
+    end_op();
+    return -1;
+  }
+
+  int maxread = sizeof(target) - 1;
+  int n = readi(ip, 0, (uint64)target, 0, maxread);
+  iunlockput(ip);
+  end_op();
+
+  if (n < 0)
+    return -1;
+
+  if (n >= bufsiz)
+    n = bufsiz - 1;
+  target[n] = '\0';
+
+  if (copyout(p->pagetable, p->sz, ubuf, target, n + 1) < 0)
+    return -1;
+
+  return n;
+}
+
+// Shared implementation for dup2() and dup3() (with O_CLOEXEC support).
+static int
+do_dup(int oldfd, int newfd, int flags, int is_dup3)
+{
+  struct proc *p = myproc();
+  struct file *f;
+
+  if (oldfd < 0 || oldfd >= NOFILE || newfd < 0 || newfd >= NOFILE)
+    return -1;
+
+  f = p->ofile[oldfd];
+  if (f == 0)
+    return -1;
+
+  if (is_dup3) {
+    if (oldfd == newfd || (flags & ~O_CLOEXEC) != 0)
+      return -1;
+  } else if (oldfd == newfd) {
+    return newfd;
+  }
+
+  // Increment reference count BEFORE closing any old file at newfd.
+  filedup(f);
+  if (p->ofile[newfd] != 0)
+    fileclose(p->ofile[newfd]);
+
+  p->ofile[newfd] = f;
+  if (flags & O_CLOEXEC)
+    p->fd_cloexec |= (1U << newfd);
+  else
+    p->fd_cloexec &= ~(1U << newfd);
+
+  return newfd;
+}
+
+uint64
+sys_dup2(void)
+{
+  int oldfd, newfd;
+
+  argint(0, &oldfd);
+  argint(1, &newfd);
+  return do_dup(oldfd, newfd, 0, 0);
+}
+
+uint64
+sys_dup3(void)
+{
+  int oldfd, newfd, flags;
+
+  argint(0, &oldfd);
+  argint(1, &newfd);
+  argint(2, &flags);
+  return do_dup(oldfd, newfd, flags, 1);
+}
+
+// Gather live block, inode, and buffer-cache statistics into user struct statfs.
+uint64
+sys_statfs(void)
+{
+  uint64 addr;
+  struct statfs st;
+  struct proc *p = myproc();
+
+  argaddr(0, &addr);
+  fsstat(&st);
+
+  if (copyout(p->pagetable, p->sz, addr, (char *)&st, sizeof(st)) < 0)
+    return -1;
+
   return 0;
 }

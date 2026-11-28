@@ -123,6 +123,7 @@ extern uint64 sys_getcowfaults(void);
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 extern uint64 sys_tracemode(void);
 extern uint64 sys_setaging(void);
@@ -134,13 +135,26 @@ extern uint64 sys_setaging(void);
 extern uint64 sys_syscallstats(void);
 >>>>>>> b8719fe (updated project)
 =======
+=======
+>>>>>>> 6400aec (Implemented modueles)
 extern uint64 sys_tracemode(void);
 extern uint64 sys_setaging(void);
 extern uint64 sys_syscallstats(void);
 extern uint64 sys_setaffinity(void);
 extern uint64 sys_getprocname(void);
 extern uint64 sys_findproc(void);
+<<<<<<< HEAD
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+extern uint64 sys_lseek(void);
+extern uint64 sys_symlink(void);
+extern uint64 sys_readlink(void);
+extern uint64 sys_sigalarm(void);
+extern uint64 sys_sigreturn(void);
+extern uint64 sys_dup2(void);
+extern uint64 sys_dup3(void);
+extern uint64 sys_statfs(void);
+>>>>>>> 6400aec (Implemented modueles)
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
@@ -188,6 +202,7 @@ static uint64 (*syscalls[])(void) = {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
   [SYS_tracemode]       = sys_tracemode,
   [SYS_setaging]        = sys_setaging,
@@ -199,13 +214,26 @@ static uint64 (*syscalls[])(void) = {
   [SYS_syscallstats]    = sys_syscallstats,
 >>>>>>> b8719fe (updated project)
 =======
+=======
+>>>>>>> 6400aec (Implemented modueles)
   [SYS_tracemode]       = sys_tracemode,
   [SYS_setaging]        = sys_setaging,
   [SYS_syscallstats]    = sys_syscallstats,
   [SYS_setaffinity]     = sys_setaffinity,
   [SYS_getprocname]     = sys_getprocname,
   [SYS_findproc]        = sys_findproc,
+<<<<<<< HEAD
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+  [SYS_lseek]           = sys_lseek,
+  [SYS_symlink]         = sys_symlink,
+  [SYS_readlink]        = sys_readlink,
+  [SYS_sigalarm]        = sys_sigalarm,
+  [SYS_sigreturn]       = sys_sigreturn,
+  [SYS_dup2]            = sys_dup2,
+  [SYS_dup3]            = sys_dup3,
+  [SYS_statfs]          = sys_statfs,
+>>>>>>> 6400aec (Implemented modueles)
   // clang-format on
 };
 
@@ -253,6 +281,7 @@ static char *syscall_names[] = {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
   [SYS_tracemode]       = "tracemode",
   [SYS_setaging]        = "setaging",
@@ -264,13 +293,26 @@ static char *syscall_names[] = {
   [SYS_syscallstats]    = "syscallstats",
 >>>>>>> b8719fe (updated project)
 =======
+=======
+>>>>>>> 6400aec (Implemented modueles)
   [SYS_tracemode]       = "tracemode",
   [SYS_setaging]        = "setaging",
   [SYS_syscallstats]    = "syscallstats",
   [SYS_setaffinity]     = "setaffinity",
   [SYS_getprocname]     = "getprocname",
   [SYS_findproc]        = "findproc",
+<<<<<<< HEAD
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+  [SYS_lseek]           = "lseek",
+  [SYS_symlink]         = "symlink",
+  [SYS_readlink]        = "readlink",
+  [SYS_sigalarm]        = "sigalarm",
+  [SYS_sigreturn]       = "sigreturn",
+  [SYS_dup2]            = "dup2",
+  [SYS_dup3]            = "dup3",
+  [SYS_statfs]          = "statfs",
+>>>>>>> 6400aec (Implemented modueles)
   // clang-format on
 };
 
@@ -441,6 +483,7 @@ syscall(void)
       if (!(p->trace_flags & TRACE_ERRORS) || (long)ret < 0) {
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
         printk("%d: syscall %s -> %ld\n",
                p->pid, syscall_names[num], (long)ret);
 =======
@@ -451,6 +494,10 @@ syscall(void)
         printk("%d: syscall %s -> %ld\n", p->pid, syscall_names[num],
                (long)ret);
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+        printk("%d: syscall %s -> %ld\n", p->pid, syscall_names[num],
+               (long)ret);
+>>>>>>> 6400aec (Implemented modueles)
       }
     }
   } else {

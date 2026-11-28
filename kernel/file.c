@@ -35,6 +35,7 @@ filealloc(void)
   for (f = ftable.file; f < ftable.file + NFILE; f++) {
     if (f->ref == 0) {
       f->ref = 1;
+      f->sparse_pending = 0;
       release(&ftable.lock);
       return f;
     }
@@ -151,6 +152,44 @@ filewrite(struct file *f, uint64 addr, int n)
     // i-node, indirect block, allocation blocks,
     // and 2 blocks of slop for non-aligned writes.
     int max = ((MAXOPBLOCKS - 1 - 1 - 2) / 2) * BSIZE;
+    static char zero_buf[BSIZE];
+
+    // Sparse seek support: only zero-fill when lseek() explicitly moved f->off
+    // past EOF (preserves standard error semantics if another proc truncated).
+    while (f->sparse_pending) {
+      uint gap = 0;
+      uint pos = 0;
+
+      ilock(f->ip);
+      if (f->off > f->ip->size) {
+        pos = f->ip->size;
+        gap = f->off - pos;
+      }
+      iunlock(f->ip);
+
+      if (gap == 0) {
+        f->sparse_pending = 0;
+        break;
+      }
+
+      uint chunk = (gap > BSIZE) ? BSIZE : gap;
+      begin_op();
+      ilock(f->ip);
+      if (f->off > f->ip->size) {
+        pos = f->ip->size;
+        uint cur_gap = f->off - pos;
+        if (chunk > cur_gap)
+          chunk = cur_gap;
+        if (writei(f->ip, 0, (uint64)zero_buf, pos, chunk) != chunk) {
+          iunlock(f->ip);
+          end_op();
+          return -1;
+        }
+      }
+      iunlock(f->ip);
+      end_op();
+    }
+
     int i = 0;
     while (i < n) {
       int n1 = n - i;

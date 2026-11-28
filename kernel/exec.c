@@ -132,6 +132,23 @@ kexec(char *path, char **argv)
   // Unmap any active mmap regions from the old image before freeing its page table.
   mmap_cleanup(p);
 
+<<<<<<< HEAD
+=======
+  // Close descriptors marked O_CLOEXEC and clear any previous alarm state.
+  for (i = 0; i < NOFILE; i++) {
+    if ((p->fd_cloexec & (1U << i)) && p->ofile[i]) {
+      fileclose(p->ofile[i]);
+      p->ofile[i] = 0;
+    }
+  }
+  p->fd_cloexec = 0;
+  p->alarm_interval = 0;
+  p->alarm_ticks = 0;
+  p->alarm_active = 0;
+  p->alarm_oneshot = 0;
+  p->alarm_handler = 0;
+
+>>>>>>> 6400aec (Implemented modueles)
   // Commit to the user image.
   oldpagetable = p->pagetable;
   p->pagetable = pagetable;

@@ -113,6 +113,7 @@ struct proc {
   uint32 syscall_errs[MAX_SYSCALLS]; // Per-syscall failure counts (return < 0)
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   uint64 ctime;         // Creation timestamp (ticks)
   uint64 last_run_tick; // Last tick process ran or became runnable
 =======
@@ -120,12 +121,17 @@ struct proc {
   uint64 last_run_tick;              // Last tick process ran or became runnable
 >>>>>>> b8719fe (updated project)
 =======
+=======
+>>>>>>> 6400aec (Implemented modueles)
   uint64 ctime;                      // Creation timestamp (ticks)
   uint64 last_run_tick;              // Last tick process ran or became runnable
   uint64 ctx_switches; // Number of times scheduler dispatched this process
   uint64 yield_count;  // Number of voluntary sched_yield() calls
   uint64 cpu_affinity; // Allowed RISC-V hart bitmask (~0ULL = all harts)
+<<<<<<< HEAD
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+>>>>>>> 6400aec (Implemented modueles)
 
   // wait_lock must be held when using this:
   struct proc *parent; // Parent process
@@ -137,7 +143,14 @@ struct proc {
   struct trapframe *trapframe; // data page for trampoline.S
   struct context context;      // swtch() here to run process
   struct file *ofile[NOFILE];  // Open files
+  uint32 fd_cloexec;           // Bitmask of O_CLOEXEC file descriptors
   struct inode *cwd;           // Current directory
   struct vma vmas[NVMA];       // Memory-mapped regions
+  int alarm_interval;          // User timer alarm interval in ticks (0 = off)
+  int alarm_ticks;             // Ticks elapsed since last alarm
+  int alarm_active;            // 1 while user alarm handler is executing
+  int alarm_oneshot;           // 1 to auto-disarm after firing once
+  uint64 alarm_handler;        // User virtual address of alarm handler
+  struct trapframe alarm_tf;   // Saved user registers for sigreturn()
   char name[16];               // Process name (debugging)
 };

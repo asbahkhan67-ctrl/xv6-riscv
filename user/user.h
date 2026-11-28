@@ -1,6 +1,7 @@
 #define SBRK_ERROR ((char *)-1)
 
 struct stat;
+struct statfs;
 struct sysinfo;
 
 // system calls
@@ -46,6 +47,7 @@ int getcowfaults(int);
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 int tracemode(int);
 int setaging(int);
@@ -57,13 +59,26 @@ int setaging(int);
 int syscallstats(int);
 >>>>>>> b8719fe (updated project)
 =======
+=======
+>>>>>>> 6400aec (Implemented modueles)
 int tracemode(int);
 int setaging(int);
 int syscallstats(int);
 int setaffinity(int, uint64);
 int getprocname(int, char *, int);
 int findproc(const char *, int *, int);
+<<<<<<< HEAD
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+int lseek(int, int, int);
+int symlink(const char *, const char *);
+int readlink(const char *, char *, int);
+int sigalarm(int, void (*)(void), int);
+int sigreturn(void);
+int dup2(int, int);
+int dup3(int, int, int);
+int statfs(struct statfs *);
+>>>>>>> 6400aec (Implemented modueles)
 
 // ulib.c
 int stat(const char *, struct stat *);

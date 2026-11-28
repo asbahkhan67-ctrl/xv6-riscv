@@ -28,6 +28,7 @@ usage(void)
   printf("  syscount <pid>      (total syscalls for PID; 0 = self)\n");
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   printf("  syscount -v [pid]   (verbose breakdown & top syscalls; 0 = self)\n");
 =======
   printf(
@@ -37,6 +38,10 @@ usage(void)
   printf(
     "  syscount -v [pid]   (verbose breakdown & top syscalls; 0 = self)\n");
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+  printf(
+    "  syscount -v [pid]   (verbose breakdown & top syscalls; 0 = self)\n");
+>>>>>>> 6400aec (Implemented modueles)
 }
 
 int
@@ -77,6 +82,7 @@ main(int argc, char *argv[])
     }
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     printf("Process %d total syscalls: %d\n", (pid == 0) ? getpid() : pid, count);
 =======
     printf("Process %d total syscalls: %d\n", (pid == 0) ? getpid() : pid,
@@ -86,6 +92,10 @@ main(int argc, char *argv[])
     printf("Process %d total syscalls: %d\n", (pid == 0) ? getpid() : pid,
            count);
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+    printf("Process %d total syscalls: %d\n", (pid == 0) ? getpid() : pid,
+           count);
+>>>>>>> 6400aec (Implemented modueles)
     exit(0);
   }
 

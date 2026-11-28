@@ -23,9 +23,12 @@ main(int argc, char *argv[])
   }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   printf("\nrenametest (PID %d): after setprocname(\"%s\")\n", getpid(),
          newname);
 =======
+=======
+>>>>>>> 6400aec (Implemented modueles)
   memset(check, 0, sizeof(check));
   if (getprocname(0, check, sizeof(check)) < 0 || strcmp(check, newname) != 0) {
     printf("renametest: getprocname verification failed ('%s')\n", check);
@@ -46,7 +49,10 @@ main(int argc, char *argv[])
   printf(
     "\nrenametest (PID %d): renamed to \"%s\" (verified via getprocname & findproc)\n",
     me, check);
+<<<<<<< HEAD
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+>>>>>>> 6400aec (Implemented modueles)
   ps();
 
   printf("renametest: ALL TESTS PASSED\n");

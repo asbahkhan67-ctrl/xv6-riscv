@@ -518,3 +518,51 @@ sys_findproc(void)
 
   return findproc_by_name(name, upids, max);
 }
+<<<<<<< HEAD
+=======
+
+// Arm or disarm a periodic (or SIGALARM_ONESHOT) user-space timer callback.
+// Returns remaining ticks from any previously scheduled alarm (0 if none).
+uint64
+sys_sigalarm(void)
+{
+  int interval, flags;
+  uint64 handler;
+  struct proc *p = myproc();
+
+  argint(0, &interval);
+  argaddr(1, &handler);
+  argint(2, &flags);
+
+  if (interval < 0 || (flags & ~SIGALARM_ONESHOT))
+    return -1;
+
+  int prev_rem = 0;
+  if (p->alarm_interval > 0 && p->alarm_interval > p->alarm_ticks)
+    prev_rem = p->alarm_interval - p->alarm_ticks;
+
+  p->alarm_interval = interval;
+  p->alarm_handler = handler;
+  p->alarm_ticks = 0;
+  p->alarm_oneshot = (flags & SIGALARM_ONESHOT) ? 1 : 0;
+  if (interval == 0)
+    p->alarm_active = 0;
+
+  return prev_rem;
+}
+
+// Restore the interrupted user registers saved when sigalarm fired.
+uint64
+sys_sigreturn(void)
+{
+  struct proc *p = myproc();
+
+  if (!p->alarm_active)
+    return -1;
+
+  *(p->trapframe) = p->alarm_tf;
+  p->alarm_active = 0;
+  // Return saved a0 so syscall() preserves the interrupted instruction's a0.
+  return p->trapframe->a0;
+}
+>>>>>>> 6400aec (Implemented modueles)

@@ -70,6 +70,7 @@ usertrap(void)
     // Hardware device or timer interrupt handled.
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   } else if (r_scause() == 15 &&
              cowalloc(p->pagetable, r_stval()) != 0) {
     // Store page fault resolved via Copy-on-Write (COW).
@@ -79,15 +80,20 @@ usertrap(void)
 =======
 =======
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+>>>>>>> 6400aec (Implemented modueles)
   } else if (r_scause() == 15 && cowalloc(p->pagetable, r_stval()) != 0) {
     // Store page fault resolved via Copy-on-Write (COW).
   } else if ((r_scause() == 15 || r_scause() == 13) &&
              mmapfault(p->pagetable, r_stval(), (r_scause() == 13) ? 1 : 0) !=
                0) {
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> b8719fe (updated project)
 =======
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+>>>>>>> 6400aec (Implemented modueles)
     // Load/store page fault resolved via lazy mmap demand paging.
   } else if ((r_scause() == 15 || r_scause() == 13) &&
              vmfault(p->pagetable, p->sz, r_stval(),
@@ -103,10 +109,28 @@ usertrap(void)
     kexit(-1);
 
   // Timer interrupt while running in user mode:
+<<<<<<< HEAD
   // charge one user tick and give up the CPU slice.
   if (which_dev == 2) {
     p->user_ticks++;
     p->cpu_time++;
+=======
+  // charge one user tick, deliver sigalarm if armed, and yield CPU slice.
+  if (which_dev == 2) {
+    p->user_ticks++;
+    p->cpu_time++;
+    if (p->alarm_interval > 0 && !p->alarm_active) {
+      p->alarm_ticks++;
+      if (p->alarm_ticks >= p->alarm_interval) {
+        p->alarm_ticks = 0;
+        p->alarm_active = 1;
+        p->alarm_tf = *(p->trapframe);
+        p->trapframe->epc = p->alarm_handler;
+        if (p->alarm_oneshot)
+          p->alarm_interval = 0;
+      }
+    }
+>>>>>>> 6400aec (Implemented modueles)
     yield();
   }
 

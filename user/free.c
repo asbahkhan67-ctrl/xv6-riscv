@@ -43,6 +43,7 @@ main(int argc, char *argv[])
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   uint64 used = (info.totalmem >= info.freemem) ? (info.totalmem - info.freemem) : 0;
 =======
   uint64 used =
@@ -52,6 +53,10 @@ main(int argc, char *argv[])
   uint64 used =
     (info.totalmem >= info.freemem) ? (info.totalmem - info.freemem) : 0;
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+  uint64 used =
+    (info.totalmem >= info.freemem) ? (info.totalmem - info.freemem) : 0;
+>>>>>>> 6400aec (Implemented modueles)
   uint64 total_pages = info.totalmem / PGSIZE;
   uint64 used_pages = used / PGSIZE;
   uint64 free_pages = info.freemem / PGSIZE;
@@ -71,6 +76,7 @@ main(int argc, char *argv[])
   } else {
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     printf("Total memory:  %lu KB (%lu pages)\n", info.totalmem / 1024, total_pages);
     printf("Used memory:   %lu KB (%lu pages, ", used / 1024, used_pages);
     print_pct(used, info.totalmem);
@@ -85,6 +91,8 @@ main(int argc, char *argv[])
 =======
 =======
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+>>>>>>> 6400aec (Implemented modueles)
     printf("Total memory:  %lu KB (%lu pages)\n", info.totalmem / 1024,
            total_pages);
     printf("Used memory:   %lu KB (%lu pages, ", used / 1024, used_pages);
@@ -99,9 +107,12 @@ main(int argc, char *argv[])
   printf("Active procs:  %lu / %d  | Uptime: %lu ticks\n", info.nproc, NPROC,
          info.uptime);
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> b8719fe (updated project)
 =======
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+>>>>>>> 6400aec (Implemented modueles)
 
   exit(0);
 }

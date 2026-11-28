@@ -20,6 +20,7 @@
 #include "fs.h"
 #include "buf.h"
 #include "file.h"
+#include "statfs.h"
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 // there should be one superblock per disk device, but we run with
@@ -738,4 +739,51 @@ struct inode *
 nameiparent(char *path, char *name)
 {
   return namex(path, 1, name);
+}
+
+// Scan the filesystem block bitmap, inode table, and buffer cache counters.
+void
+fsstat(struct statfs *st)
+{
+  uint used_blocks = 0;
+  uint used_inodes = 0;
+  struct buf *bp;
+
+  memset(st, 0, sizeof(*st));
+  st->bsize = BSIZE;
+  st->total_blocks = sb.size;
+  st->data_blocks = sb.nblocks;
+  st->log_blocks = sb.nlog;
+  st->total_inodes = (sb.ninodes > 1) ? (sb.ninodes - 1) : 0;
+
+  // Count allocated blocks from the free-block bitmap.
+  for (uint b = 0; b < sb.size; b += BPB) {
+    bp = bread(ROOTDEV, BBLOCK(b, sb));
+    for (uint bi = 0; bi < BPB && b + bi < sb.size; bi++) {
+      if (bp->data[bi / 8] & (1 << (bi % 8)))
+        used_blocks++;
+    }
+    brelse(bp);
+  }
+
+  // Count allocated inodes across on-disk inode blocks (skipping inum 0).
+  for (uint inum = 1; inum < sb.ninodes;) {
+    uint blk = IBLOCK(inum, sb);
+    bp = bread(ROOTDEV, blk);
+    struct dinode *dip = (struct dinode *)bp->data;
+    while (inum < sb.ninodes && IBLOCK(inum, sb) == blk) {
+      if (dip[inum % IPB].type != 0)
+        used_inodes++;
+      inum++;
+    }
+    brelse(bp);
+  }
+
+  st->used_blocks = used_blocks;
+  st->free_blocks = (sb.size > used_blocks) ? (sb.size - used_blocks) : 0;
+  st->used_inodes = used_inodes;
+  st->free_inodes =
+    (st->total_inodes > used_inodes) ? (st->total_inodes - used_inodes) : 0;
+
+  bcache_stats(&st->bcache_hits, &st->bcache_misses);
 }

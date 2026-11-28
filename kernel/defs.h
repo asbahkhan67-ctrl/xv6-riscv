@@ -8,6 +8,7 @@ struct proc;
 struct spinlock;
 struct sleeplock;
 struct stat;
+struct statfs;
 struct superblock;
 
 // bio.c
@@ -17,6 +18,7 @@ void            brelse(struct buf*);
 void            bwrite(struct buf*);
 void            bpin(struct buf*);
 void            bunpin(struct buf*);
+void            bcache_stats(uint64 *, uint64 *);
 
 // console.c
 void            consoleinit(void);
@@ -56,6 +58,7 @@ void            stati(struct inode*, struct stat*);
 int             writei(struct inode*, int, uint64, uint, uint);
 void            itrunc(struct inode*);
 void            ireclaim(int);
+void            fsstat(struct statfs *);
 
 // kalloc.c
 void*           kalloc(void);
@@ -118,6 +121,7 @@ int             getcowfaults_proc(int);
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 int             setaging(int);
 int             getsyscall_snapshot(int, int *, char *, uint64 *, uint32 *, uint32 *);
@@ -127,12 +131,17 @@ int             setaging(int);
 int             getsyscall_snapshot(int, int *, char *, uint64 *, uint32 *, uint32 *);
 >>>>>>> b8719fe (updated project)
 =======
+=======
+>>>>>>> 6400aec (Implemented modueles)
 int             setaging(int);
 int             getsyscall_snapshot(int, int *, char *, uint64 *, uint32 *, uint32 *);
 int             setaffinity_proc(int, uint64);
 int             getprocname_proc(int, uint64, int);
 int             findproc_by_name(const char *, uint64, int);
+<<<<<<< HEAD
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+>>>>>>> 6400aec (Implemented modueles)
 uint64          nproc_active(void);
 int             kgetppid(void);
 int             getsyscallcount_proc(int);

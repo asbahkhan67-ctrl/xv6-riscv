@@ -25,6 +25,7 @@ usage(void)
   printf("  setpriority <pid>             (view current priority; 0 = self)\n");
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   printf("  setpriority <pid> <1..20>     (set priority: 1=highest, 10=default, 20=lowest)\n");
 =======
   printf(
@@ -34,6 +35,10 @@ usage(void)
   printf(
     "  setpriority <pid> <1..20>     (set priority: 1=highest, 10=default, 20=lowest)\n");
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+  printf(
+    "  setpriority <pid> <1..20>     (set priority: 1=highest, 10=default, 20=lowest)\n");
+>>>>>>> 6400aec (Implemented modueles)
 }
 
 int
@@ -89,6 +94,7 @@ main(int argc, char *argv[])
   if (pid == 0)
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     printf("Process %d (self) priority changed: %d -> %d\n",
            target_pid, old_prio, new_prio);
   else
@@ -97,15 +103,20 @@ main(int argc, char *argv[])
 =======
 =======
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+>>>>>>> 6400aec (Implemented modueles)
     printf("Process %d (self) priority changed: %d -> %d\n", target_pid,
            old_prio, new_prio);
   else
     printf("Process %d priority changed: %d -> %d\n", target_pid, old_prio,
            new_prio);
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> b8719fe (updated project)
 =======
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+>>>>>>> 6400aec (Implemented modueles)
 
   exit(0);
 }

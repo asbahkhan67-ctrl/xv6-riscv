@@ -30,6 +30,8 @@ struct {
   // Sorted by how recently the buffer was used.
   // head.next is most recent, head.prev is least.
   struct buf head;
+  uint64 hits;
+  uint64 misses;
 } bcache;
 
 void
@@ -38,6 +40,8 @@ binit(void)
   struct buf *b;
 
   initlock(&bcache.lock, "bcache");
+  bcache.hits = 0;
+  bcache.misses = 0;
 
   // Create linked list of buffers
   bcache.head.prev = &bcache.head;
@@ -65,6 +69,7 @@ bget(uint dev, uint blockno)
   for (b = bcache.head.next; b != &bcache.head; b = b->next) {
     if (b->dev == dev && b->blockno == blockno) {
       b->refcnt++;
+      bcache.hits++;
       release(&bcache.lock);
       acquiresleep(&b->lock);
       return b;
@@ -79,6 +84,7 @@ bget(uint dev, uint blockno)
       b->blockno = blockno;
       b->valid = 0;
       b->refcnt = 1;
+      bcache.misses++;
       release(&bcache.lock);
       acquiresleep(&b->lock);
       return b;
@@ -149,5 +155,15 @@ bunpin(struct buf *b)
 {
   acquire(&bcache.lock);
   b->refcnt--;
+  release(&bcache.lock);
+}
+
+// Read current buffer cache hit and miss totals for df -c telemetry.
+void
+bcache_stats(uint64 *hits, uint64 *misses)
+{
+  acquire(&bcache.lock);
+  *hits = bcache.hits;
+  *misses = bcache.misses;
   release(&bcache.lock);
 }

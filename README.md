@@ -33,6 +33,7 @@ The implementation targets **64-bit RISC-V (`rv64gc`)** and runs on **QEMU (`vir
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 | **6** | **System call tracing with `trace()` and `strace`** | Error-only filtering (`strace -e`) & post-run syscall summary table (`strace -c`) |
 | **7** | **System resource diagnostics (`sysinfo` & `free`)** | Human-readable MB / `%` mode (`free -m`) + open file & shared COW page counts |
 | **8** | **Parent process inspection (`getppid` & `pstree`)** | Targeted subtree root filtering (`pstree [pid]`) & per-node child count badge |
@@ -43,11 +44,14 @@ The implementation targets **64-bit RISC-V (`rv64gc`)** and runs on **QEMU (`vir
 >>>>>>> b8719fe (updated project)
 =======
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+>>>>>>> 6400aec (Implemented modueles)
 | **6** | **System call tracing (`strace`)** | Show only failed calls (`-e`) or print a summary table (`-c`) |
 | **7** | **System health & memory (`free`)** | Megabyte view (`free -m`) plus open files & shared COW page counts |
 | **8** | **Process family tree (`pstree`)** | Filter by a chosen root PID (`pstree <pid>`) and show child counts (`kids=N`) |
 | **9** | **Anti-starvation priority aging (`agetest`)** | Live effective priority (`EFF`) in `ps` and runtime tuning (`agetest set`) |
 | **10** | **Syscall counter (`syscount`)** | Ranked breakdown of top syscalls and errors (`syscount -v [pid]`) |
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 >>>>>>> e18456e (Updated xv6-riscv)
@@ -59,17 +63,27 @@ The implementation targets **64-bit RISC-V (`rv64gc`)** and runs on **QEMU (`vir
 | **14** | **Multi-core HART identification (`getcpuid`)** | Soft CPU core affinity mask (`setaffinity`) to pin processes to specific harts |
 | **15** | **Dynamic process naming (`setprocname`)** | Runtime name retrieval (`getprocname`) & process lookup by name (`pidof`) |
 =======
+=======
+>>>>>>> 6400aec (Implemented modueles)
 | **11** | **Command timer & benchmark (`time`)** | Shows CPU usage percentage (`CPU%`) and context switches |
 | **12** | **Clean power control (`shutdown` & `reboot`)** | Optional countdown timer (`shutdown <sec>`) with console warning |
 | **13** | **Voluntary CPU yielding (`sched_yield`)** | Tracks how many times each process gave up the CPU (`yield_count`) |
 | **14** | **Multi-core CPU info (`cpuinfo`)** | Pin processes to specific RISC-V cores (`setaffinity`) |
 | **15** | **Dynamic process naming (`setprocname`)** | Read back a process name (`getprocname`) and find PIDs (`pidof`) |
+<<<<<<< HEAD
 >>>>>>> bc531db (Implemented modules 11-15)
 | **16** | **Random-access file positioning (`lseek`)** | Sparse seek past EOF with automatic zero-fill upon subsequent `write()` |
 | **17** | **Symbolic links (`symlink` & `O_NOFOLLOW`)** | Target inspection (`readlink`) & arrow target rendering (`link -> target`) in `ls` |
 | **18** | **Periodic user-space timer alarms (`sigalarm`)** | One-shot alarm flag (`SIGALARM_ONESHOT`) & remaining-ticks return value |
 | **19** | **Targeted file descriptor redirection (`dup2`)** | Close-on-exec descriptor protection (`dup3` with `O_CLOEXEC` across `exec()`) |
 | **20** | **File system & disk diagnostics (`statfs` & `df`)** | Buffer cache hit/miss telemetry (`df -c` reporting `bcache` efficiency) |
+=======
+| **16** | **Jump anywhere in a file (`lseek`)** | Seeking past file end zero-fills the gap automatically |
+| **17** | **Shortcuts / symbolic links (`symlink`)** | Inspect shortcut targets (`readlink`) and show `link -> target` in `ls` |
+| **18** | **Timer alarms (`sigalarm` & `sigreturn`)** | One-shot alarms (`SIGALARM_ONESHOT`) and remaining-tick return value |
+| **19** | **Redirect file handles (`dup2`)** | Auto-close private handles on `exec()` (`dup3` with `O_CLOEXEC`) |
+| **20** | **Disk & cache health (`df`)** | Buffer cache hit/miss stats (`df -c`) and self-test (`df -t`) |
+>>>>>>> 6400aec (Implemented modueles)
 
 All twenty extensions preserve original xv6 interfaces and full compatibility with the standard `usertests` regression suite.
 
@@ -82,17 +96,20 @@ NexusXv6/
 ├── kernel/
 │   ├── proc.h          # Process control block, VMA table, priority, aging, alarm & trace state
 │   ├── proc.c          # Priority scheduler, aging, fork/exit, waitx, ps, pstree, syscount
-│   ├── syscall.h       # System call numbers (1..43)
+│   ├── syscall.h       # System call numbers (1..53)
 │   ├── syscall.c       # Syscall dispatch table, per-process counting, and strace logger
 │   ├── sysproc.c       # Process, memory, benchmark, timer-alarm, CPU, and power syscalls
-│   ├── sysfile.c       # VFS syscalls including lseek, symlink, O_NOFOLLOW, dup2, and statfs
+│   ├── sysfile.c       # VFS syscalls including lseek, symlink, O_NOFOLLOW, dup2/dup3, and statfs
+│   ├── bio.c           # Buffer cache with hit/miss telemetry for df -c
+│   ├── file.h          # Open file descriptor structs and sparse_pending tracking for lseek
+│   ├── file.c          # File table helpers, nopen_files(), and sparse write zero-fill
 │   ├── fs.c            # File system allocator, inodes, path lookup, and fsstat() scanner
 │   ├── statfs.h        # struct statfs disk/inode diagnostics structure shared with user space
 │   ├── sysinfo.h       # struct sysinfo memory/process structure shared with user space
-│   ├── fcntl.h         # File control flags (O_NOFOLLOW) and seek modes (SEEK_SET/CUR/END)
+│   ├── fcntl.h         # File control flags (O_NOFOLLOW, O_CLOEXEC) and seek modes (SEEK_SET/CUR/END)
 │   ├── stat.h          # File and inode types including T_SYMLINK
 │   ├── trap.c          # Timer tick accounting, user sigalarm delivery, COW & mmap page faults
-│   ├── exec.c          # ELF loader with signal-alarm state reset across exec()
+│   ├── exec.c          # ELF loader with mmap_cleanup(), O_CLOEXEC auto-close, and alarm reset across exec()
 │   ├── vm.c            # Page tables, COW fork/faults, mmap demand paging, VIRT_TEST MMIO map
 │   ├── kalloc.c        # Physical page allocator, COW frame reference counts, free RAM metrics
 │   ├── memlayout.h     # Physical/virtual memory layout including VIRT_TEST MMIO register
@@ -117,6 +134,7 @@ NexusXv6/
 │   ├── yieldtest.c     # Module 13: Cooperative CPU yielding & yield-count test
 │   ├── cpuinfo.c       # Module 14: Multi-core RISC-V HART & affinity inspection utility
 │   ├── renametest.c    # Module 15: Dynamic process naming & lookup verification test
+│   ├── pidof.c         # Module 15: Find active process IDs by process name (findproc)
 │   ├── lseektest.c     # Module 16: Random-access & sparse file seek verification test
 │   ├── symlinktest.c   # Module 17: Symbolic link, readlink & cycle-detection test
 │   ├── alarmtest.c     # Module 18: Periodic & one-shot user timer alarm test
@@ -142,7 +160,7 @@ NexusXv6 is organized into four clean layers. User-space utilities invoke kernel
 flowchart TD
     subgraph L1["Layer 1: User-Space Utilities and Verification Suite"]
         direction LR
-        U_PROC["Process & Scheduling: ps, pstree, setpriority, agetest, yieldtest, renametest"]
+        U_PROC["Process & Scheduling: ps, pstree, setpriority, agetest, yieldtest, renametest, pidof"]
         U_PROF["Tracing, Signals & Profiling: strace, syscount, time, alarmtest, cpuburn, cpuinfo"]
         U_MEM["Virtual Memory & Power: cowtest, mmaptest, free, shutdown, reboot"]
         U_FS["File System & I/O: lseektest, symlinktest, dup2test, df, ln -s, ls"]
@@ -150,7 +168,7 @@ flowchart TD
 
     subgraph L2["Layer 2: RISC-V Trap and System Call Boundary"]
         direction LR
-        SYSC["System Call Dispatcher (syscall.c): Syscalls 1..43, Freq Counters, strace Filters"]
+        SYSC["System Call Dispatcher (syscall.c): Syscalls 1..53, Freq Counters, strace Filters"]
         TRAP["Trap & Interrupt Handler (trap.c): User/Kernel Ticks, sigalarm Upcalls, Page Faults"]
     end
 
@@ -158,7 +176,7 @@ flowchart TD
         direction LR
         K_PROC["Process & Scheduler (proc.c): Priority, Aging, Affinity, waitx, Subtrees, Names"]
         K_VM["Virtual & Physical Memory (vm.c, kalloc.c): COW Stats, File & Anon mmap, RAM Metrics"]
-        K_FS["VFS & File System (sysfile.c, fs.c, bio.c): Sparse lseek, Symlinks, dup2/CLOEXEC, statfs"]
+        K_FS["VFS & File System (sysfile.c, fs.c, bio.c): Sparse lseek, Symlinks, dup2/dup3/CLOEXEC, statfs"]
     end
 
     subgraph L4["Layer 4: RISC-V 64 SMP and QEMU virt Hardware"]
@@ -226,6 +244,7 @@ $ ps
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 PID   PRIO  CPU (U/K)       MEM-KB  STATE   NAME
 ----  ----  --------------  ------  ------  ----------------
 1     10    0 (0/0)         16      sleep   init
@@ -238,6 +257,8 @@ Active processes: 3 | Total process memory: 52 KB
 >>>>>>> b8719fe (updated project)
 =======
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+>>>>>>> 6400aec (Implemented modueles)
 PID   PRIO  EFF   CPU (U/K)       MEM-KB  STATE   NAME
 ----  ----  ----  --------------  ------  ------  ----------------
 1     10    10    0 (0/0)         16      sleep   init
@@ -247,11 +268,14 @@ PID   PRIO  EFF   CPU (U/K)       MEM-KB  STATE   NAME
 Active processes: 3 | Total process memory: 52 KB | Aging: 10 ticks
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> e18456e (Updated xv6-riscv)
 =======
 >>>>>>> b8719fe (updated project)
 =======
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+>>>>>>> 6400aec (Implemented modueles)
 ```
 
 ### Key Files
@@ -355,6 +379,7 @@ $ ps
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 PID   PRIO  CPU (U/K)       MEM-KB  STATE   NAME
 ----  ----  --------------  ------  ------  ----------------
 1     10    0 (0/0)         16      sleep   init
@@ -368,6 +393,8 @@ Active processes: 4 | Total process memory: 68 KB
 >>>>>>> b8719fe (updated project)
 =======
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+>>>>>>> 6400aec (Implemented modueles)
 PID   PRIO  EFF   CPU (U/K)       MEM-KB  STATE   NAME
 ----  ----  ----  --------------  ------  ------  ----------------
 1     10    10    0 (0/0)         16      sleep   init
@@ -378,11 +405,14 @@ PID   PRIO  EFF   CPU (U/K)       MEM-KB  STATE   NAME
 Active processes: 4 | Total process memory: 68 KB | Aging: 10 ticks
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> e18456e (Updated xv6-riscv)
 =======
 >>>>>>> b8719fe (updated project)
 =======
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+>>>>>>> 6400aec (Implemented modueles)
 ```
 
 ### Key Files
@@ -1019,229 +1049,276 @@ PID(s) for 'sh': 2
 
 # 16. Random-Access File Positioning — `lseek()`
 
-Baseline xv6 only supports sequential file reads and writes. NexusXv6 adds `lseek(int fd, int offset, int whence)` (`SYS_lseek = 38`), enabling random-access file positioning with `SEEK_SET` (`0`), `SEEK_CUR` (`1`), and `SEEK_END` (`2`).
+### In Simple Words
+
+Standard xv6 only reads and writes files from start to finish in order. `lseek()` lets a program **jump directly to any byte position** inside an open file — from the start (`SEEK_SET`), from where you currently are (`SEEK_CUR`), or backwards/forwards from the end (`SEEK_END`) — just like dragging a playhead in a media player.
 
 ```mermaid
 flowchart TD
-    U["1. User calls lseek(fd, offset, whence)"] --> V{"2. Valid open FD_INODE file?"}
-    V -- "No (Pipe / Device / Bad FD)" --> E1["Return -1"]
-    V -- "Yes" --> L["3. Lock inode: ilock(f->ip) & compute target new_off"]
-    L --> B{"4. 0 <= new_off <= MAXFILE * BSIZE?"}
-    B -- "No" --> E2["iunlock(f->ip) & Return -1"]
-    B -- "Yes" --> OK["5. Update f->off = new_off, iunlock(f->ip) & Return new_off"]
-    OK --> SP["Mini-Extension: If f->off > ip->size on next write(), zero-fill sparse gap automatically"]
+    A["1. Program calls lseek(fd, offset, whence)"] --> B{"2. Is fd a valid open disk file?"}
+    B -- "No" --> ERR1["Return -1"]
+    B -- "Yes" --> C["3. Lock file and compute new position (from start, current, or end)"]
+    C --> D{"4. Is the new position within valid file limits?"}
+    D -- "No" --> ERR2["Unlock file and return -1"]
+    D -- "Yes" --> E["5. Save new position in f->off and return it"]
+    E --> F["6. Bonus: If moved past end of file, zero-fill the gap on next write()"]
 ```
 
-### Example
+### How It Works
+
+* **Three positioning modes (`kernel/fcntl.h`, `kernel/sysfile.c`):** `SEEK_SET` (from byte `0`), `SEEK_CUR` (relative to `f->off`), and `SEEK_END` (relative to `ip->size`).
+* **Safe bounds checking:** Rejects negative final offsets or positions beyond `MAXFILE * BSIZE`, and rejects pipes/devices cleanly.
+
+### Mini-Extension: Sparse Seek Past End-of-File
+
+* When `lseek()` places the offset past the current end of a file, the next `write()` automatically **fills the skipped gap with zeros** in log-safe chunks (while preserving standard error checks if another process truncated the file).
+
+### Live Demo & Output
 
 ```text
 $ lseektest
 lseektest: starting random-access file positioning test
-lseektest: SEEK_SET offset 4 -> patched 4 bytes
-lseektest: SEEK_CUR offset 10 -> read "ABCD"
-lseektest: SEEK_END -12 -> verified "WXYZ" (size=16)
+[Test 1] SEEK_SET offset 4 -> patched "WXYZ"
+[Test 2] SEEK_CUR +4 (offset 12) -> read "CDEF"
+[Test 3] SEEK_END -12 (offset 4) -> verified "WXYZ"
+[Test 4] Sparse seek past EOF -> 8 zero-filled gap bytes + "END!" (size=28)
 lseektest: ALL TESTS PASSED
 ```
 
-### Mini-Extension: Sparse Seek Past EOF with Automatic Zero-Fill
+### Key Files
 
-* Extends `filewrite()` so that when a process seeks beyond the current end-of-file (`lseek(fd, 512, SEEK_END)`) and writes new bytes, the kernel automatically zero-fills the intermediate hole between old `ip->size` and `f->off`.
-
-### Relevant Files
-
-* `kernel/fcntl.h`, `kernel/syscall.h`, `kernel/syscall.c`, `kernel/sysfile.c`, `user/lseektest.c`
+* `kernel/fcntl.h`, `kernel/file.h`, `kernel/file.c`, `kernel/sysfile.c`, `user/lseektest.c`
 
 ---
 
-# 17. Symbolic Links — `symlink()` and `O_NOFOLLOW`
+# 17. Symbolic Links (Shortcuts) — `symlink()`, `readlink()`, and `O_NOFOLLOW`
 
-NexusXv6 introduces symbolic-link inodes (`T_SYMLINK = 4`) via `symlink(const char *target, const char *path)` (`SYS_symlink = 39`), shell support in `ln -s`, `ls` type recognition, `O_NOFOLLOW` raw inspection, and bounded cycle detection (`MAXSYMLINK = 10`).
+### In Simple Words
+
+A **symbolic link** works just like a **desktop shortcut**: it is a small special file (`T_SYMLINK`) that stores the name of another file or path. Opening the shortcut automatically opens the target file — unless you ask not to follow it (`O_NOFOLLOW`), and our kernel stops infinite loops if two shortcuts point to each other.
 
 ```mermaid
 flowchart TD
-    subgraph Create["Creating & Inspecting Symbolic Links"]
-        C1["symlink(target, linkpath)"] --> C2["Allocate T_SYMLINK inode & store target path in block 0"]
-        C2 --> RL["Mini-Extension: readlink(path, buf) reads raw target string -> 'ls' prints 'link -> target'"]
+    subgraph Make["Creating & Checking a Shortcut"]
+        C1["ln -s target linkname"] --> C2["Create T_SYMLINK file storing target path"]
+        C2 --> C3["Bonus: readlink() reads target string so 'ls' shows 'link -> target'"]
     end
 
-    subgraph Open["Opening a Path in sys_open()"]
-        O1["open(path, omode) resolves inode"] --> O2{"Is inode T_SYMLINK?"}
-        O2 -- "No" --> O6["Open regular file / directory normally"]
-        O2 -- "Yes" --> O3{"Is O_NOFOLLOW set?"}
-        O3 -- "Yes" --> O4["Return raw symlink descriptor without following target"]
-        O3 -- "No" --> O5{"Hop depth < MAXSYMLINK (10)?"}
-        O5 -- "No (Cycle detected)" --> ERR["Abort & return -1"]
-        O5 -- "Yes" --> HOP["Read target path from symlink inode & lookup next inode (depth++)"]
-        HOP --> O2
+    subgraph Open["Opening a Path in open()"]
+        O1["open(path, flags) looks up file"] --> O2{"Is it a symlink?"}
+        O2 -- "No" --> O3["Open normal file or folder"]
+        O2 -- "Yes" --> O4{"Was O_NOFOLLOW set?"}
+        O4 -- "Yes" --> O5["Open shortcut itself without following"]
+        O4 -- "No" --> O6{"Followed fewer than 10 hops?"}
+        O6 -- "No (Loop detected)" --> ERR["Stop and return -1"]
+        O6 -- "Yes" --> O7["Read target name and look up next file"]
+        O7 --> O2
     end
 ```
 
-### Example
+### How It Works
+
+* **Create & inspect (`kernel/sysfile.c`, `user/ln.c`):** `ln -s target link` calls `symlink()`, storing the target string inside a `T_SYMLINK` inode.
+* **Loop protection (`kernel/param.h`):** `open()` follows chained shortcuts up to `MAXSYMLINK` (`10`) hops and cleanly rejects broken links or circular loops.
+
+### Mini-Extension: `readlink()` & Arrow Display in `ls`
+
+* Adds **`readlink(path, buf, size)`** to read a shortcut's target path directly, and updates **`ls`** (using `O_NOFOLLOW`) to print symbolic links cleanly as `doclink -> README`.
+
+### Live Demo & Output
 
 ```text
+$ symlinktest
+symlinktest: starting symbolic link verification
+[Test 1] Chained symlink sym_link2 -> sym_link1 -> sym_target read "nexus-link"
+[Test 2] readlink("sym_link1") = "sym_target" (O_NOFOLLOW type=T_SYMLINK)
+[Test 3] Dangling symlink rejected cleanly
+[Test 4] Symlink cycle caught cleanly (MAXSYMLINK guard)
+symlinktest: ALL TESTS PASSED
+
 $ ln -s README doclink
 $ ls doclink
-doclink -> README   4 45 7
+doclink -> README  4 45 6
 ```
 
-### Mini-Extension: `readlink()` Syscall & Target Arrow Display in `ls`
-
-* Adds `readlink(const char *path, char *buf, int bufsiz)` to fetch the target string directly from a `T_SYMLINK` inode without opening a file descriptor, enabling `ls` to display symbolic links cleanly as `doclink -> README`.
-
-### Relevant Files
+### Key Files
 
 * `kernel/stat.h`, `kernel/fcntl.h`, `kernel/param.h`, `kernel/sysfile.c`, `user/ln.c`, `user/ls.c`, `user/symlinktest.c`
 
 ---
 
-# 18. Periodic User-Space Timer Alarms — `sigalarm()` and `sigreturn()`
+# 18. User-Space Timer Alarms — `sigalarm()` and `sigreturn()`
 
-NexusXv6 supports kernel-to-user timer upcalls via `sigalarm(int ticks, void (*handler)(void))` (`SYS_sigalarm = 40`) and `sigreturn()` (`SYS_sigreturn = 41`). The kernel preserves interrupted user registers in `p->alarm_tf` and prevents re-entrant signal overlap via `p->alarm_active`.
+### In Simple Words
+
+`sigalarm()` lets a program set an **alarm clock** inside the OS: *"After every N timer ticks, pause whatever I'm doing, run my handler function, and then put me right back where I left off."* To make sure the interrupted program doesn't lose its place or scramble its CPU registers, the kernel saves a snapshot of its registers before running the handler and restores them on `sigreturn()`.
 
 ```mermaid
-sequenceDiagram
-    participant App as "User Main Code"
-    participant Handler as "User Alarm Handler"
-    participant Kernel as "Kernel (trap.c / sysproc.c)"
-
-    App->>Kernel: 1. sigalarm(ticks, Handler) arms periodic or One-Shot timer (returns prev remaining ticks)
-    Note over App: Main computation runs in user mode
-    Kernel->>Kernel: 2. Hardware timer interrupt reaches target interval
-    Kernel->>Kernel: 3. Save trapframe to p->alarm_tf, set alarm_active = 1, set epc = Handler
-    Note over Kernel: Mini-Extension - If SIGALARM_ONESHOT is set, auto-disarm alarm_interval = 0
-    Kernel-->>Handler: 4. sret jumps into User Alarm Handler
-    Handler->>Kernel: 5. Call sigreturn()
-    Kernel->>Kernel: 6. Restore *(p->trapframe) = p->alarm_tf & clear alarm_active = 0
-    Kernel-->>App: 7. Resume exact interrupted user instruction & registers
+flowchart TD
+    A["1. Program calls sigalarm(ticks, handler, flags)"] --> B["2. Program keeps running normal code"]
+    B --> C["3. Timer reaches target ticks -> kernel saves user registers"]
+    C --> D["4. Bonus: If SIGALARM_ONESHOT is set, turn off future repeats"]
+    D --> E["5. Jump CPU into user's alarm handler function"]
+    E --> F["6. Handler finishes and calls sigreturn()"]
+    F --> G["7. Kernel restores saved registers -> program resumes seamlessly"]
 ```
 
-### Example
+### How It Works
+
+* **Register snapshot (`kernel/proc.h`, `kernel/trap.c`):** `usertrap()` saves `*(p->trapframe)` into `p->alarm_tf`, sets `alarm_active = 1` (preventing overlapping alarms), and jumps to `alarm_handler`.
+* **Exact resume (`kernel/sysproc.c`):** `sys_sigreturn()` restores `p->alarm_tf` and returns `p->trapframe->a0` so not a single register is lost.
+* **Clean across `exec()` (`kernel/exec.c`):** Clears any armed alarm when starting a new program.
+
+### Mini-Extension: One-Shot Mode (`SIGALARM_ONESHOT`) & Remaining Ticks
+
+* Supports **`SIGALARM_ONESHOT`** so a timer fires **only once** and disarms itself automatically, and makes `sigalarm()` return how many ticks were left on any previous alarm.
+
+### Live Demo & Output
 
 ```text
 $ alarmtest
-alarmtest: configuring periodic timer (interval = 2 ticks)
-alarmtest: timer signal #1 delivered to user handler
-...
-alarmtest: register state verified across 4 signals
+alarmtest: starting user-space timer alarm verification
+[Test 1] Periodic alarm delivered 4 signals (remaining=1 ticks)
+[Test 2] Previous alarm remaining ticks returned: 20 / 20
+[Test 3] SIGALARM_ONESHOT fired exactly once and auto-disarmed
 alarmtest: ALL TESTS PASSED
 ```
 
-### Mini-Extension: One-Shot Alarm Mode (`SIGALARM_ONESHOT`) & Remaining-Ticks Return
+### Key Files
 
-* Allows arming single-shot timeout callbacks that automatically disarm after firing once, and updates `sigalarm()` to return the number of ticks remaining from any previously scheduled alarm (mirroring POSIX `alarm()`).
-
-### Relevant Files
-
-* `kernel/proc.h`, `kernel/proc.c`, `kernel/exec.c`, `kernel/trap.c`, `kernel/sysproc.c`, `user/alarmtest.c`
+* `kernel/param.h`, `kernel/proc.h`, `kernel/proc.c`, `kernel/exec.c`, `kernel/trap.c`, `kernel/sysproc.c`, `user/alarmtest.c`
 
 ---
 
-# 19. Targeted File Descriptor Redirection — `dup2()`
+# 19. File Descriptor Redirection — `dup2()` and `dup3()`
 
-While baseline `dup()` only allocates the lowest free descriptor slot, `dup2(int oldfd, int newfd)` (`SYS_dup2 = 42`) atomically duplicates `oldfd` onto an exact target slot `newfd`, closing any previously open file at `newfd` first.
+### In Simple Words
+
+Normal `dup()` picks the next free file slot number automatically. `dup2(oldfd, newfd)` lets a program **place a file handle into an exact chosen slot number** (closing whatever was previously in `newfd` first) — the exact mechanism shells use to redirect input/output (`>` and `<`).
 
 ```mermaid
 flowchart TD
-    A["1. User calls dup2(oldfd, newfd) or Mini-Extension dup3(oldfd, newfd, O_CLOEXEC)"] --> B{"2. oldfd open & 0 <= newfd < NOFILE?"}
+    A["1. Program calls dup2(oldfd, newfd) or dup3(oldfd, newfd, O_CLOEXEC)"] --> B{"2. Are both slot numbers valid & oldfd open?"}
     B -- "No" --> ERR["Return -1"]
     B -- "Yes" --> C{"3. Is oldfd == newfd?"}
-    C -- "Yes" --> RET["Return newfd (dup2 no-op)"]
-    C -- "No" --> D["4. Increment reference count: filedup(ofile[oldfd])"]
-    D --> E{"5. Is ofile[newfd] currently open?"}
-    E -- "Yes" --> F["Close previous target: fileclose(ofile[newfd])"]
-    E -- "No" --> G["6. Bind p->ofile[newfd] = ofile[oldfd]"]
-    F --> G
-    G --> CLO["Mini-Extension: Record O_CLOEXEC flag in p->fd_cloexec bitmask (auto-closed on exec)"]
-    CLO --> RET2["7. Return newfd"]
+    C -- "Yes (dup2)" --> SAME["Return newfd unchanged"]
+    C -- "No" --> D["4. Increase file reference count first (safe ordering)"]
+    D --> E["5. If newfd is already open, close the old handle"]
+    E --> F["6. Point newfd to the same file and return newfd"]
+    F --> G["7. Bonus: If O_CLOEXEC was set, auto-close newfd on exec()"]
 ```
 
-### Example
+### How It Works
+
+* **Safe ordering (`kernel/sysfile.c`):** `do_dup()` calls `filedup()` *before* closing any existing handle at `newfd`, so the underlying file is never accidentally freed prematurely.
+* **Shared file offset:** Both `oldfd` and `newfd` point to the same kernel `struct file`, so writes advance one shared offset.
+
+### Mini-Extension: Close-on-Exec Protection (`dup3` & `O_CLOEXEC`)
+
+* Adds a per-process `fd_cloexec` bitmask and **`dup3(oldfd, newfd, O_CLOEXEC)`**: any handle marked `O_CLOEXEC` is **automatically closed during `exec()`**, keeping private handles from leaking into new programs.
+
+### Live Demo & Output
 
 ```text
 $ dup2test
-dup2test: starting targeted descriptor redirection test
-dup2test: shared offset across fd 3 and fd 10 OK
+dup2test: starting descriptor redirection verification
+[Test 1] dup2(fd, 10) shared offset verified ("ABCD")
+[Test 2] dup3(fd, 11, O_CLOEXEC) automatically closed fd 11 on exec()
 dup2test: ALL TESTS PASSED
 ```
 
-### Mini-Extension: Close-on-Exec Descriptor Flag (`dup3` / `O_CLOEXEC`)
+### Key Files
 
-* Adds a per-process `p->fd_cloexec` bitmask and `dup3(oldfd, newfd, flags)` support so descriptors marked with `O_CLOEXEC` are automatically closed during `kexec()`, preventing private parent file descriptors from leaking into executed child programs.
-
-### Relevant Files
-
-* `kernel/syscall.h`, `kernel/syscall.c`, `kernel/sysfile.c`, `user/dup2test.c`
+* `kernel/fcntl.h`, `kernel/proc.h`, `kernel/proc.c`, `kernel/exec.c`, `kernel/sysfile.c`, `user/dup2test.c`
 
 ---
 
-# 20. File System & Disk Usage Diagnostics — `statfs()` and `df`
+# 20. Disk & Buffer Cache Diagnostics — `statfs()` and `df`
 
-Complementing `free` for physical memory, `statfs(struct statfs *)` (`SYS_statfs = 43`) and the `df` command inspect live on-disk storage utilization across the VirtIO block filesystem via the kernel buffer cache.
+### In Simple Words
+
+Just as `free` reports RAM health, **`df`** reports **hard-disk health**: how many disk blocks and file slots (inodes) are used vs. free, plus how efficiently our in-memory disk cache (`bcache`) is avoiding slow disk reads.
 
 ```mermaid
 flowchart TD
-    U["1. User runs 'df', 'df -t', or Mini-Extension 'df -c'"] --> K["2. Kernel enters sys_statfs() -> fsstat()"]
-
-    K --> SB["Read Superblock (sb): block size, total blocks, data & log counts"]
-    K --> BM["Scan Block Bitmap via bread(): count allocated vs. free disk blocks"]
-    K --> IN["Scan On-Disk Inode Blocks (IBLOCK): count active vs. free inodes"]
-    K --> BC["Mini-Extension (bio.c): Read buffer-cache bcache_hits & bcache_misses"]
-
-    SB --> PACK["3. Populate struct statfs"]
-    BM --> PACK
-    IN --> PACK
-    BC --> PACK
-
-    PACK --> OUT["4. copyout() to user space & display disk, inode, and cache hit-rate report"]
+    A["1. User runs 'df', 'df -c', or 'df -t'"] --> B["2. Program calls statfs() into kernel"]
+    B --> C["3. Read disk size from superblock"]
+    B --> D["4. Scan free-block bitmap (used vs. free blocks)"]
+    B --> E["5. Scan inode table (used vs. free file slots)"]
+    B --> F["6. Bonus: Read buffer-cache hit & miss counters"]
+    C --> G["7. Combine into struct statfs and send to user space"]
+    D --> G
+    E --> G
+    F --> G
+    G --> H["8. Print disk usage, inode usage, and cache hit rate (%)"]
 ```
 
-### Example
+### How It Works
+
+* **Live disk scan (`kernel/fs.c`):** `fsstat()` reads the superblock, scans the block allocation bitmap, and scans on-disk inode blocks to report exact usage.
+* **Built-in verification (`user/df.c`):** `df -t` creates a test file, confirms used blocks and inodes increase, deletes it, and confirms counts recover.
+
+### Mini-Extension: Buffer Cache Hit/Miss Telemetry (`df -c`)
+
+* Tracks cache hits (block already in memory) vs. misses (disk read required) inside `bget()` (`kernel/bio.c`), allowing **`df -c`** to display the live buffer-cache hit rate percentage.
+
+### Live Demo & Output
 
 ```text
 $ df -c
 Filesystem (ROOTDEV 1, block size 1024 B):
-Total disk:   4000 KB (4000 blocks, 3953 data, 31 log)
-Used disk:    1792 KB (1792 blocks, 44%)
-Free disk:    2208 KB (2208 blocks)
-Inodes:       44 used / 199 total (155 free)
-Buffer cache: 412 hits / 18 misses (95% hit rate)
+Total disk:   4000 KB (4000 blocks: 3953 data, 31 log)
+Used disk:    1946 KB (1946 blocks, 48%)
+Free disk:    2054 KB (2054 blocks)
+Inodes:       45 used / 199 total (154 free, 22%)
+Buffer cache: 749 hits / 225 misses (76% hit rate)
+
+$ df -t
+...
+df: ALL TESTS PASSED
 ```
 
-### Mini-Extension: Buffer Cache Hit/Miss Telemetry (`df -c`)
+### Key Files
 
-* Tracks cache hits (block already resident in `bcache`) versus disk misses (`virtio_disk_rw` reads) inside `bget()` (`kernel/bio.c`), allowing `df -c` to report live LRU buffer-cache efficiency alongside disk and inode capacity.
-
-### Relevant Files
-
-* `kernel/statfs.h`, `kernel/defs.h`, `kernel/fs.c`, `kernel/bio.c`, `kernel/sysfile.c`, `user/df.c`
+* `kernel/statfs.h`, `kernel/defs.h`, `kernel/bio.c`, `kernel/fs.c`, `kernel/sysfile.c`, `user/df.c`
 
 ---
 
-# System Calls Added (23 – 43)
+# System Calls Added (23 – 53)
 
 | System Call         | Number | Module | Purpose                                                |
 | ------------------- | -----: | -----: | ------------------------------------------------------ |
 | `ps()`              |     23 |      1 | Display active entries in the kernel process table     |
 | `setpriority()`     |     24 |      2 | Change process scheduling priority (`1..20`)           |
-| `mmap()`            |     25 |      5 | Create a lazy file-backed virtual memory mapping       |
+| `mmap()`            |     25 |      5 | Create a lazy file-backed or anonymous mapping         |
 | `munmap()`          |     26 |      5 | Unmap pages and write back `MAP_SHARED` modifications  |
 | `trace()`           |     27 |      6 | Configure per-process system-call trace bitmask        |
-| `sysinfo()`         |     28 |      7 | Query free/total RAM, active processes, and uptime     |
+| `sysinfo()`         |     28 |      7 | Query RAM, shared COW pages, open files, procs, uptime |
 | `getppid()`         |     29 |      8 | Return calling process's parent PID                    |
 | `ptree()`           |     30 |      8 | Display hierarchical parent-child process tree         |
 | `getsyscallcount()` |     31 |     10 | Return per-process invoked system-call count           |
-| `waitx()`           |     32 |     11 | Reap child and return wait ticks & active CPU ticks    |
+| `waitx()`           |     32 |     11 | Reap child and return wait, CPU ticks, & ctx switches  |
 | `halt()`            |     33 |     12 | Cleanly power off the QEMU RISC-V virtual machine      |
 | `reboot()`          |     34 |     12 | Cleanly restart the QEMU RISC-V virtual machine        |
-| `sched_yield()`     |     35 |     13 | Voluntarily yield the current CPU time slice           |
+| `sched_yield()`     |     35 |     13 | Voluntarily yield CPU slice and return yield count     |
 | `getcpuid()`        |     36 |     14 | Return executing RISC-V hardware thread (hart) ID      |
 | `setprocname()`     |     37 |     15 | Dynamically update the calling process's name          |
-| `lseek()`           |     38 |     16 | Reposition read/write file offset (`SEEK_SET/CUR/END`) |
-| `symlink()`         |     39 |     17 | Create a symbolic link (`T_SYMLINK`) to a target path  |
-| `sigalarm()`        |     40 |     18 | Register a periodic user-space timer alarm callback    |
-| `sigreturn()`       |     41 |     18 | Restore saved trapframe after user alarm handler runs  |
-| `dup2()`            |     42 |     19 | Atomically duplicate a file descriptor onto `newfd`    |
-| `statfs()`          |     43 |     20 | Query disk block, log, and inode usage statistics      |
+| `getpriority()`     |     38 |      2 | Query a process's current base priority                |
+| `getcowfaults()`    |     39 |      4 | Query per-process Copy-on-Write fault count            |
+| `tracemode()`       |     40 |      6 | Enable `strace -e` (errors) or `strace -c` (summary)   |
+| `setaging()`        |     41 |      9 | Query or tune runtime priority aging threshold         |
+| `syscallstats()`    |     42 |     10 | Print per-syscall breakdown & top calls (`syscount -v`)|
+| `setaffinity()`     |     43 |     14 | Pin a process to specific RISC-V cores (harts)         |
+| `getprocname()`     |     44 |     15 | Copy a process's runtime name back to user space       |
+| `findproc()`        |     45 |     15 | Find active PIDs matching a process name (`pidof`)     |
+| `lseek()`           |     46 |     16 | Reposition read/write file offset (`SEEK_SET/CUR/END`) |
+| `symlink()`         |     47 |     17 | Create a symbolic link (`T_SYMLINK`) to a target path  |
+| `readlink()`        |     48 |     17 | Read raw target string from a symbolic link            |
+| `sigalarm()`        |     49 |     18 | Register a periodic or one-shot user alarm handler     |
+| `sigreturn()`       |     50 |     18 | Restore saved trapframe after user alarm handler runs  |
+| `dup2()`            |     51 |     19 | Atomically duplicate a file descriptor onto `newfd`    |
+| `dup3()`            |     52 |     19 | Duplicate descriptor with `O_CLOEXEC` flag support     |
+| `statfs()`          |     53 |     20 | Query disk block, inode, and buffer-cache statistics   |
 
 ---
 
@@ -1250,7 +1327,7 @@ Buffer cache: 412 hits / 18 misses (95% hit rate)
 NexusXv6 builds and runs on **WSL2 (Ubuntu)** with `build-essential`, `gcc-riscv64-unknown-elf`, `qemu-system-misc` / `qemu-system-riscv`, `perl`, and `bc`:
 
 ```bash
-cd /mnt/d/xv6-riscv-riscv
+cd /mnt/d/Projects/E14/xv6-riscv   # or your cloned xv6-riscv directory
 make clean
 make
 make qemu
@@ -1261,23 +1338,25 @@ Inside the NexusXv6 shell (`$`):
 ```text
 $ ps
 $ pstree
-$ free
+$ free -m
+$ df -c
 $ df -t
 $ setpriority 2 5
 $ agetest
 $ cowtest
 $ mmaptest
-$ strace -a echo hello
-$ syscount
-$ time cowtest
+$ strace -c echo hello
+$ syscount -v 2
+$ time cpuburn 2
 $ yieldtest
 $ cpuinfo
 $ renametest
+$ pidof sh
 $ lseektest
 $ symlinktest
 $ alarmtest
 $ dup2test
-$ usertests
+$ usertests -q
 $ shutdown
 ```
 

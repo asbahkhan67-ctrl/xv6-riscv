@@ -16,9 +16,13 @@ int nextpid = 1;
 struct spinlock pid_lock;
 int aging_threshold = AGING_THRESHOLD; // Runtime-tunable aging interval (ticks)
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 volatile uint64 online_cpus = 0;       // Bitmask of harts running scheduler()
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+volatile uint64 online_cpus = 0;       // Bitmask of harts running scheduler()
+>>>>>>> 6400aec (Implemented modueles)
 
 extern void forkret(void);
 static void freeproc(struct proc *p);
@@ -141,11 +145,24 @@ found:
   p->ctime = ticks;
   p->last_run_tick = ticks;
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
   p->ctx_switches = 0;
   p->yield_count = 0;
   p->cpu_affinity = ~0ULL;
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+  p->ctx_switches = 0;
+  p->yield_count = 0;
+  p->cpu_affinity = ~0ULL;
+  p->fd_cloexec = 0;
+  p->alarm_interval = 0;
+  p->alarm_ticks = 0;
+  p->alarm_active = 0;
+  p->alarm_oneshot = 0;
+  p->alarm_handler = 0;
+  memset(&p->alarm_tf, 0, sizeof(p->alarm_tf));
+>>>>>>> 6400aec (Implemented modueles)
   for (int i = 0; i < NVMA; i++)
     memset(&p->vmas[i], 0, sizeof(p->vmas[i]));
   p->state = USED;
@@ -203,6 +220,16 @@ freeproc(struct proc *p)
   p->ctx_switches = 0;
   p->yield_count = 0;
   p->cpu_affinity = ~0ULL;
+<<<<<<< HEAD
+=======
+  p->fd_cloexec = 0;
+  p->alarm_interval = 0;
+  p->alarm_ticks = 0;
+  p->alarm_active = 0;
+  p->alarm_oneshot = 0;
+  p->alarm_handler = 0;
+  memset(&p->alarm_tf, 0, sizeof(p->alarm_tf));
+>>>>>>> 6400aec (Implemented modueles)
   p->name[0] = 0;
   p->chan = 0;
   p->killed = 0;
@@ -318,9 +345,13 @@ kfork(void)
   np->trace_mask = p->trace_mask;
   np->trace_flags = p->trace_flags;
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
   np->cpu_affinity = p->cpu_affinity;
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+  np->cpu_affinity = p->cpu_affinity;
+>>>>>>> 6400aec (Implemented modueles)
 
   // Inherit active memory mappings (duplicate file handle only if file-backed).
   for (i = 0; i < NVMA; i++) {
@@ -341,6 +372,7 @@ kfork(void)
   for (i = 0; i < NOFILE; i++)
     if (p->ofile[i])
       np->ofile[i] = filedup(p->ofile[i]);
+  np->fd_cloexec = p->fd_cloexec;
   np->cwd = idup(p->cwd);
 
   safestrcpy(np->name, p->name, sizeof(p->name));
@@ -521,14 +553,20 @@ kwaitx(uint64 addr, uint64 wtime_addr, uint64 rtime_addr, uint64 csw_addr)
           if (rtime_addr != 0 && copyout(p->pagetable, p->sz, rtime_addr,
                                          (char *)&rtime, sizeof(rtime)) < 0) {
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> 6400aec (Implemented modueles)
             release(&pp->lock);
             release(&wait_lock);
             return -1;
           }
           if (csw_addr != 0 && copyout(p->pagetable, p->sz, csw_addr,
                                        (char *)&csw, sizeof(csw)) < 0) {
+<<<<<<< HEAD
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+>>>>>>> 6400aec (Implemented modueles)
             release(&pp->lock);
             release(&wait_lock);
             return -1;
@@ -630,6 +668,7 @@ scheduler(void)
       acquire(&p->lock);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
       if (p->state == RUNNABLE) {
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -651,6 +690,11 @@ scheduler(void)
         uint64 waited = 0;
         int eff_prio = calc_eff_prio(p, now, &waited);
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+      if (p->state == RUNNABLE && (p->cpu_affinity & my_bit)) {
+        uint64 waited = 0;
+        int eff_prio = calc_eff_prio(p, now, &waited);
+>>>>>>> 6400aec (Implemented modueles)
 
         if (best == 0 || eff_prio < best_eff_prio ||
             (eff_prio == best_eff_prio && waited > best_waited)) {
@@ -952,6 +996,7 @@ procdump(void)
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 
   printk("PID   PRIO  CPU (U/K)       MEM-KB  STATE   NAME\n");
   printk("----  ----  --------------  ------  ------  ----------------\n");
@@ -964,15 +1009,20 @@ procdump(void)
 =======
 =======
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+>>>>>>> 6400aec (Implemented modueles)
   uint64 now = ticks;
 
   printk("PID   PRIO  EFF   CPU (U/K)       MEM-KB  STATE   NAME\n");
   printk(
     "----  ----  ----  --------------  ------  ------  ----------------\n");
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> b8719fe (updated project)
 =======
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+>>>>>>> 6400aec (Implemented modueles)
 
   for (p = proc; p < &proc[NPROC]; p++) {
     if (p->state == UNUSED)
@@ -1000,6 +1050,7 @@ procdump(void)
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
     int eff_prio = calc_eff_prio(p, now, 0);
 >>>>>>> e18456e (Updated xv6-riscv)
@@ -1009,6 +1060,9 @@ procdump(void)
 =======
     int eff_prio = calc_eff_prio(p, now, 0);
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+    int eff_prio = calc_eff_prio(p, now, 0);
+>>>>>>> 6400aec (Implemented modueles)
     total_mem_kb += mem_kb;
     active_count++;
 
@@ -1017,6 +1071,7 @@ procdump(void)
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
     print_uint_col(eff_prio, 6);
 >>>>>>> e18456e (Updated xv6-riscv)
@@ -1026,12 +1081,16 @@ procdump(void)
 =======
     print_uint_col(eff_prio, 6);
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+    print_uint_col(eff_prio, 6);
+>>>>>>> 6400aec (Implemented modueles)
     print_col(cpubuf, 16);
     print_uint_col(mem_kb, 8);
     print_col(state, 8);
     printk("%s\n", p->name);
   }
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1046,15 +1105,20 @@ procdump(void)
 =======
 =======
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+>>>>>>> 6400aec (Implemented modueles)
   printk(
     "------------------------------------------------------------------\n");
   printk(
     "Active processes: %d | Total process memory: %lu KB | Aging: %d ticks\n",
     active_count, total_mem_kb, aging_threshold);
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> b8719fe (updated project)
 =======
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+>>>>>>> 6400aec (Implemented modueles)
 }
 
 // Update the scheduling priority of process 'pid' (pid == 0 targets caller).
@@ -1207,6 +1271,7 @@ print_ptree_node(const struct pnode *node, int depth)
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   printk("[%d] %s (prio=%d, state=%s, kids=%d)\n",
          node->pid, node->name, node->priority, st, node->kids);
 =======
@@ -1217,6 +1282,10 @@ print_ptree_node(const struct pnode *node, int depth)
   printk("[%d] %s (prio=%d, state=%s, kids=%d)\n", node->pid, node->name,
          node->priority, st, node->kids);
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+  printk("[%d] %s (prio=%d, state=%s, kids=%d)\n", node->pid, node->name,
+         node->priority, st, node->kids);
+>>>>>>> 6400aec (Implemented modueles)
 }
 
 static void
@@ -1301,6 +1370,7 @@ proctree(int root_pid)
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   printk("Subtree Root PID: %d (kids=%d)\n",
          nodes[root_idx].pid, nodes[root_idx].kids);
 =======
@@ -1311,6 +1381,10 @@ proctree(int root_pid)
   printk("Subtree Root PID: %d (kids=%d)\n", nodes[root_idx].pid,
          nodes[root_idx].kids);
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+  printk("Subtree Root PID: %d (kids=%d)\n", nodes[root_idx].pid,
+         nodes[root_idx].kids);
+>>>>>>> 6400aec (Implemented modueles)
   print_ptree_node(&nodes[root_idx], 0);
   print_ptree_nodes(nodes, count, nodes[root_idx].pid, 1);
   kfree((void *)nodes);
@@ -1375,7 +1449,10 @@ getsyscall_snapshot(int pid, int *pid_out, char *name_out, uint64 *total_out,
   return -1;
 }
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> 6400aec (Implemented modueles)
 
 // Query or set a process's CPU affinity mask (pid == 0 targets caller).
 // Passing mask == 0 returns the current effective mask; otherwise sets mask
@@ -1494,4 +1571,7 @@ findproc_by_name(const char *name, uint64 upids, int max)
 
   return count;
 }
+<<<<<<< HEAD
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+>>>>>>> 6400aec (Implemented modueles)

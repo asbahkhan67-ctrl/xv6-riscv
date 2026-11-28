@@ -35,6 +35,7 @@ test_readonly_share(void)
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     printf("[Test 1] Child read '%c' -> new COW faults: %d (page stayed shared)\n",
            seen, after - before);
 =======
@@ -47,6 +48,11 @@ test_readonly_share(void)
       "[Test 1] Child read '%c' -> new COW faults: %d (page stayed shared)\n",
       seen, after - before);
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+    printf(
+      "[Test 1] Child read '%c' -> new COW faults: %d (page stayed shared)\n",
+      seen, after - before);
+>>>>>>> 6400aec (Implemented modueles)
     if (seen != 'S' || (after - before) != 0)
       exit(1);
     exit(0);
@@ -80,6 +86,7 @@ test_write_isolation(void)
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     printf("         Child 1 wrote '%c' -> new COW faults: %d\n",
            *page, after - before);
 =======
@@ -90,6 +97,10 @@ test_write_isolation(void)
     printf("         Child 1 wrote '%c' -> new COW faults: %d\n", *page,
            after - before);
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+    printf("         Child 1 wrote '%c' -> new COW faults: %d\n", *page,
+           after - before);
+>>>>>>> 6400aec (Implemented modueles)
     if (*page != 'B' || (after - before) < 1)
       exit(1);
     exit(0);
@@ -114,6 +125,7 @@ test_write_isolation(void)
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     printf("         Child 2 wrote '%c' -> new COW faults: %d\n",
            *page, after - before);
 =======
@@ -124,6 +136,10 @@ test_write_isolation(void)
     printf("         Child 2 wrote '%c' -> new COW faults: %d\n", *page,
            after - before);
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+    printf("         Child 2 wrote '%c' -> new COW faults: %d\n", *page,
+           after - before);
+>>>>>>> 6400aec (Implemented modueles)
     if (*page != 'C' || (after - before) < 1)
       exit(1);
     exit(0);
@@ -164,6 +180,7 @@ test_copyout_cow(void)
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     printf("[Test 3] Kernel copyout wrote '%c' into child -> new COW faults: %d\n",
            *page, after - before);
 =======
@@ -176,6 +193,11 @@ test_copyout_cow(void)
       "[Test 3] Kernel copyout wrote '%c' into child -> new COW faults: %d\n",
       *page, after - before);
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+    printf(
+      "[Test 3] Kernel copyout wrote '%c' into child -> new COW faults: %d\n",
+      *page, after - before);
+>>>>>>> 6400aec (Implemented modueles)
     if (*page != 'K' || (after - before) < 1)
       exit(1);
     exit(0);
@@ -193,6 +215,7 @@ test_copyout_cow(void)
     fail("copyout COW isolation failed");
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   printf("         Parent still sees '%c' (protected from kernel copyout)\n", *page);
 =======
   printf("         Parent still sees '%c' (protected from kernel copyout)\n",
@@ -202,6 +225,10 @@ test_copyout_cow(void)
   printf("         Parent still sees '%c' (protected from kernel copyout)\n",
          *page);
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+  printf("         Parent still sees '%c' (protected from kernel copyout)\n",
+         *page);
+>>>>>>> 6400aec (Implemented modueles)
 }
 
 int

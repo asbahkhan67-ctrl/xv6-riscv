@@ -15,6 +15,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 #define AGING_THRESHOLD 10                // ticks before priority aging boost
 #define PRIO_MIN        1                 // highest scheduling priority
 #define PRIO_DEFAULT    10                // default process priority
@@ -54,6 +55,21 @@
 #define TRACE_ERRORS  0x1 // strace -e: log only failing syscalls (ret < 0)
 #define TRACE_SUMMARY 0x2 // strace -c: print call & error summary on exit
 
+=======
+#define AGING_THRESHOLD 10 // default ticks before priority aging boost
+#define PRIO_MIN        1  // highest scheduling priority
+#define PRIO_DEFAULT    10 // default process priority
+#define PRIO_MAX        20 // lowest scheduling priority
+#define MAX_SYSCALLS    64 // max syscall slots tracked for per-call stats
+
+#define TRACE_ERRORS  0x1 // strace -e: log only failing syscalls (ret < 0)
+#define TRACE_SUMMARY 0x2 // strace -c: print call & error summary on exit
+
+#define MAXSYMLINK        10 // max symbolic link resolution hops
+#define SIGALARM_PERIODIC 0  // repeat user timer alarm every interval
+#define SIGALARM_ONESHOT  1  // auto-disarm alarm after first firing
+
+>>>>>>> 6400aec (Implemented modueles)
 #define PROT_READ  0x1
 #define PROT_WRITE 0x2
 
@@ -61,6 +77,9 @@
 #define MAP_PRIVATE   0x2
 #define MAP_ANONYMOUS 0x4 // zero-filled mapping without a file
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> b8719fe (updated project)
 =======
 >>>>>>> bc531db (Implemented modules 11-15)
+=======
+>>>>>>> 6400aec (Implemented modueles)
