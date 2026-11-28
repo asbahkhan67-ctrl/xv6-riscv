@@ -40,6 +40,7 @@
 #define SYS_getcowfaults    39
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 #define SYS_tracemode       40
 #define SYS_setaging        41
@@ -50,3 +51,11 @@
 #define SYS_setaging        41
 #define SYS_syscallstats    42
 >>>>>>> b8719fe (updated project)
+=======
+#define SYS_tracemode       40
+#define SYS_setaging        41
+#define SYS_syscallstats    42
+#define SYS_setaffinity     43
+#define SYS_getprocname     44
+#define SYS_findproc        45
+>>>>>>> bc531db (Implemented modules 11-15)

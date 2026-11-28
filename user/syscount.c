@@ -27,11 +27,16 @@ usage(void)
   printf("  syscount            (self-check with 5x getpid())\n");
   printf("  syscount <pid>      (total syscalls for PID; 0 = self)\n");
 <<<<<<< HEAD
+<<<<<<< HEAD
   printf("  syscount -v [pid]   (verbose breakdown & top syscalls; 0 = self)\n");
 =======
   printf(
     "  syscount -v [pid]   (verbose breakdown & top syscalls; 0 = self)\n");
 >>>>>>> b8719fe (updated project)
+=======
+  printf(
+    "  syscount -v [pid]   (verbose breakdown & top syscalls; 0 = self)\n");
+>>>>>>> bc531db (Implemented modules 11-15)
 }
 
 int
@@ -71,11 +76,16 @@ main(int argc, char *argv[])
       exit(1);
     }
 <<<<<<< HEAD
+<<<<<<< HEAD
     printf("Process %d total syscalls: %d\n", (pid == 0) ? getpid() : pid, count);
 =======
     printf("Process %d total syscalls: %d\n", (pid == 0) ? getpid() : pid,
            count);
 >>>>>>> b8719fe (updated project)
+=======
+    printf("Process %d total syscalls: %d\n", (pid == 0) ? getpid() : pid,
+           count);
+>>>>>>> bc531db (Implemented modules 11-15)
     exit(0);
   }
 

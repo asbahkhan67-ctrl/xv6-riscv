@@ -166,6 +166,7 @@ UPROGS=\
 	$U/_yieldtest\
 	$U/_cpuinfo\
 	$U/_renametest\
+	$U/_pidof\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)

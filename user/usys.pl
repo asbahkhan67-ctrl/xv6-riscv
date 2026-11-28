@@ -62,6 +62,7 @@ entry("getpriority");
 entry("getcowfaults");
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 entry("tracemode");
 entry("setaging");
@@ -72,3 +73,11 @@ entry("tracemode");
 entry("setaging");
 entry("syscallstats");
 >>>>>>> b8719fe (updated project)
+=======
+entry("tracemode");
+entry("setaging");
+entry("syscallstats");
+entry("setaffinity");
+entry("getprocname");
+entry("findproc");
+>>>>>>> bc531db (Implemented modules 11-15)

@@ -122,6 +122,7 @@ extern uint64 sys_getpriority(void);
 extern uint64 sys_getcowfaults(void);
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 extern uint64 sys_tracemode(void);
 extern uint64 sys_setaging(void);
@@ -132,6 +133,14 @@ extern uint64 sys_tracemode(void);
 extern uint64 sys_setaging(void);
 extern uint64 sys_syscallstats(void);
 >>>>>>> b8719fe (updated project)
+=======
+extern uint64 sys_tracemode(void);
+extern uint64 sys_setaging(void);
+extern uint64 sys_syscallstats(void);
+extern uint64 sys_setaffinity(void);
+extern uint64 sys_getprocname(void);
+extern uint64 sys_findproc(void);
+>>>>>>> bc531db (Implemented modules 11-15)
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
@@ -178,6 +187,7 @@ static uint64 (*syscalls[])(void) = {
   [SYS_getcowfaults]    = sys_getcowfaults,
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
   [SYS_tracemode]       = sys_tracemode,
   [SYS_setaging]        = sys_setaging,
@@ -188,6 +198,14 @@ static uint64 (*syscalls[])(void) = {
   [SYS_setaging]        = sys_setaging,
   [SYS_syscallstats]    = sys_syscallstats,
 >>>>>>> b8719fe (updated project)
+=======
+  [SYS_tracemode]       = sys_tracemode,
+  [SYS_setaging]        = sys_setaging,
+  [SYS_syscallstats]    = sys_syscallstats,
+  [SYS_setaffinity]     = sys_setaffinity,
+  [SYS_getprocname]     = sys_getprocname,
+  [SYS_findproc]        = sys_findproc,
+>>>>>>> bc531db (Implemented modules 11-15)
   // clang-format on
 };
 
@@ -234,6 +252,7 @@ static char *syscall_names[] = {
   [SYS_getcowfaults]    = "getcowfaults",
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
   [SYS_tracemode]       = "tracemode",
   [SYS_setaging]        = "setaging",
@@ -244,6 +263,14 @@ static char *syscall_names[] = {
   [SYS_setaging]        = "setaging",
   [SYS_syscallstats]    = "syscallstats",
 >>>>>>> b8719fe (updated project)
+=======
+  [SYS_tracemode]       = "tracemode",
+  [SYS_setaging]        = "setaging",
+  [SYS_syscallstats]    = "syscallstats",
+  [SYS_setaffinity]     = "setaffinity",
+  [SYS_getprocname]     = "getprocname",
+  [SYS_findproc]        = "findproc",
+>>>>>>> bc531db (Implemented modules 11-15)
   // clang-format on
 };
 
@@ -413,12 +440,17 @@ syscall(void)
     if (((p->trace_mask >> num) & 1ULL) && !(p->trace_flags & TRACE_SUMMARY)) {
       if (!(p->trace_flags & TRACE_ERRORS) || (long)ret < 0) {
 <<<<<<< HEAD
+<<<<<<< HEAD
         printk("%d: syscall %s -> %ld\n",
                p->pid, syscall_names[num], (long)ret);
 =======
         printk("%d: syscall %s -> %ld\n", p->pid, syscall_names[num],
                (long)ret);
 >>>>>>> b8719fe (updated project)
+=======
+        printk("%d: syscall %s -> %ld\n", p->pid, syscall_names[num],
+               (long)ret);
+>>>>>>> bc531db (Implemented modules 11-15)
       }
     }
   } else {

@@ -35,7 +35,7 @@ int sysinfo(struct sysinfo *);
 int getppid(void);
 int ptree(int);
 int getsyscallcount(int);
-int waitx(int *, uint64 *, uint64 *);
+int waitx(int *, uint64 *, uint64 *, uint64 *);
 int halt(void);
 int reboot(void);
 int sched_yield(void);
@@ -43,6 +43,7 @@ int getcpuid(void);
 int setprocname(const char *);
 int getpriority(int);
 int getcowfaults(int);
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 =======
@@ -55,6 +56,14 @@ int tracemode(int);
 int setaging(int);
 int syscallstats(int);
 >>>>>>> b8719fe (updated project)
+=======
+int tracemode(int);
+int setaging(int);
+int syscallstats(int);
+int setaffinity(int, uint64);
+int getprocname(int, char *, int);
+int findproc(const char *, int *, int);
+>>>>>>> bc531db (Implemented modules 11-15)
 
 // ulib.c
 int stat(const char *, struct stat *);

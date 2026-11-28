@@ -105,7 +105,7 @@ void            sleep_prepare(void*);
 void            sleep(void);
 void            userinit(void);
 int             kwait(uint64);
-int             kwaitx(uint64, uint64, uint64);
+int             kwaitx(uint64, uint64, uint64, uint64);
 void            wakeup(void*);
 void            yield(void);
 int             either_copyout(int user_dst, uint64 dst, void *src, uint64 len);
@@ -117,6 +117,7 @@ int             getpriority(int);
 int             getcowfaults_proc(int);
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 int             setaging(int);
 int             getsyscall_snapshot(int, int *, char *, uint64 *, uint32 *, uint32 *);
@@ -125,6 +126,13 @@ int             getsyscall_snapshot(int, int *, char *, uint64 *, uint32 *, uint
 int             setaging(int);
 int             getsyscall_snapshot(int, int *, char *, uint64 *, uint32 *, uint32 *);
 >>>>>>> b8719fe (updated project)
+=======
+int             setaging(int);
+int             getsyscall_snapshot(int, int *, char *, uint64 *, uint32 *, uint32 *);
+int             setaffinity_proc(int, uint64);
+int             getprocname_proc(int, uint64, int);
+int             findproc_by_name(const char *, uint64, int);
+>>>>>>> bc531db (Implemented modules 11-15)
 uint64          nproc_active(void);
 int             kgetppid(void);
 int             getsyscallcount_proc(int);

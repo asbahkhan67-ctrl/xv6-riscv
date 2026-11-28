@@ -399,13 +399,14 @@ sys_syscallstats(void)
 uint64
 sys_waitx(void)
 {
-  uint64 addr, waddr, raddr;
+  uint64 addr, waddr, raddr, csw_addr;
 
   argaddr(0, &addr);
   argaddr(1, &waddr);
   argaddr(2, &raddr);
+  argaddr(3, &csw_addr);
 
-  return kwaitx(addr, waddr, raddr);
+  return kwaitx(addr, waddr, raddr, csw_addr);
 }
 
 uint64
@@ -431,8 +432,12 @@ sys_reboot(void)
 uint64
 sys_sched_yield(void)
 {
+  struct proc *p = myproc();
+
+  p->yield_count++;
+  uint64 count = p->yield_count;
   yield();
-  return 0;
+  return count;
 }
 
 uint64
@@ -463,4 +468,53 @@ sys_setprocname(void)
   release(&p->lock);
 
   return 0;
+}
+
+uint64
+sys_setaffinity(void)
+{
+  int pid;
+  uint64 mask;
+  int old;
+
+  argint(0, &pid);
+  argaddr(1, &mask);
+
+  old = setaffinity_proc(pid, mask);
+  if (old < 0)
+    return -1;
+
+  // Trigger immediate rescheduling if caller pinned itself away from current hart.
+  if (mask != 0 && (pid == 0 || pid == myproc()->pid))
+    yield();
+
+  return old;
+}
+
+uint64
+sys_getprocname(void)
+{
+  int pid, bufsiz;
+  uint64 ubuf;
+
+  argint(0, &pid);
+  argaddr(1, &ubuf);
+  argint(2, &bufsiz);
+
+  return getprocname_proc(pid, ubuf, bufsiz);
+}
+
+uint64
+sys_findproc(void)
+{
+  char name[16];
+  uint64 upids;
+  int max;
+
+  if (argstr(0, name, sizeof(name)) < 0)
+    return -1;
+  argaddr(1, &upids);
+  argint(2, &max);
+
+  return findproc_by_name(name, upids, max);
 }

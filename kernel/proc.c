@@ -15,6 +15,10 @@ struct proc *initproc;
 int nextpid = 1;
 struct spinlock pid_lock;
 int aging_threshold = AGING_THRESHOLD; // Runtime-tunable aging interval (ticks)
+<<<<<<< HEAD
+=======
+volatile uint64 online_cpus = 0;       // Bitmask of harts running scheduler()
+>>>>>>> bc531db (Implemented modules 11-15)
 
 extern void forkret(void);
 static void freeproc(struct proc *p);
@@ -136,6 +140,12 @@ found:
   memset(p->syscall_errs, 0, sizeof(p->syscall_errs));
   p->ctime = ticks;
   p->last_run_tick = ticks;
+<<<<<<< HEAD
+=======
+  p->ctx_switches = 0;
+  p->yield_count = 0;
+  p->cpu_affinity = ~0ULL;
+>>>>>>> bc531db (Implemented modules 11-15)
   for (int i = 0; i < NVMA; i++)
     memset(&p->vmas[i], 0, sizeof(p->vmas[i]));
   p->state = USED;
@@ -190,6 +200,9 @@ freeproc(struct proc *p)
   memset(p->syscall_errs, 0, sizeof(p->syscall_errs));
   p->ctime = 0;
   p->last_run_tick = 0;
+  p->ctx_switches = 0;
+  p->yield_count = 0;
+  p->cpu_affinity = ~0ULL;
   p->name[0] = 0;
   p->chan = 0;
   p->killed = 0;
@@ -304,6 +317,10 @@ kfork(void)
   np->sz = p->sz;
   np->trace_mask = p->trace_mask;
   np->trace_flags = p->trace_flags;
+<<<<<<< HEAD
+=======
+  np->cpu_affinity = p->cpu_affinity;
+>>>>>>> bc531db (Implemented modules 11-15)
 
   // Inherit active memory mappings (duplicate file handle only if file-backed).
   for (i = 0; i < NVMA; i++) {
@@ -463,9 +480,9 @@ kwait(uint64 addr)
   }
 }
 
-// Extended wait returning child's wait ticks and CPU run ticks.
+// Extended wait returning child's wait ticks, CPU run ticks, and context switches.
 int
-kwaitx(uint64 addr, uint64 wtime_addr, uint64 rtime_addr)
+kwaitx(uint64 addr, uint64 wtime_addr, uint64 rtime_addr, uint64 csw_addr)
 {
   struct proc *pp;
   int havekids, pid;
@@ -485,6 +502,7 @@ kwaitx(uint64 addr, uint64 wtime_addr, uint64 rtime_addr)
           uint64 now = ticks;
           uint64 total = (now >= pp->ctime) ? (now - pp->ctime) : 0;
           uint64 wtime = (total > rtime) ? (total - rtime) : 0;
+          uint64 csw = pp->ctx_switches;
 
           pid = pp->pid;
           if (addr != 0 &&
@@ -502,6 +520,15 @@ kwaitx(uint64 addr, uint64 wtime_addr, uint64 rtime_addr)
           }
           if (rtime_addr != 0 && copyout(p->pagetable, p->sz, rtime_addr,
                                          (char *)&rtime, sizeof(rtime)) < 0) {
+<<<<<<< HEAD
+=======
+            release(&pp->lock);
+            release(&wait_lock);
+            return -1;
+          }
+          if (csw_addr != 0 && copyout(p->pagetable, p->sz, csw_addr,
+                                       (char *)&csw, sizeof(csw)) < 0) {
+>>>>>>> bc531db (Implemented modules 11-15)
             release(&pp->lock);
             release(&wait_lock);
             return -1;
@@ -580,6 +607,12 @@ scheduler(void)
   int best_eff_prio;
   uint64 best_waited;
   struct cpu *c = mycpu();
+  uint64 my_bit = 1ULL << cpuid();
+
+  // Register this RISC-V hart as online so setaffinity() validates masks safely.
+  acquire(&pid_lock);
+  online_cpus |= my_bit;
+  release(&pid_lock);
 
   c->proc = 0;
 
@@ -596,6 +629,7 @@ scheduler(void)
     for (p = proc; p < &proc[NPROC]; p++) {
       acquire(&p->lock);
 
+<<<<<<< HEAD
       if (p->state == RUNNABLE) {
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -612,6 +646,11 @@ scheduler(void)
         uint64 waited = 0;
         int eff_prio = calc_eff_prio(p, now, &waited);
 >>>>>>> b8719fe (updated project)
+=======
+      if (p->state == RUNNABLE && (p->cpu_affinity & my_bit)) {
+        uint64 waited = 0;
+        int eff_prio = calc_eff_prio(p, now, &waited);
+>>>>>>> bc531db (Implemented modules 11-15)
 
         if (best == 0 || eff_prio < best_eff_prio ||
             (eff_prio == best_eff_prio && waited > best_waited)) {
@@ -632,6 +671,7 @@ scheduler(void)
     // Switch CPU context to the winning process if one is runnable.
     if (best != 0) {
       best->state = RUNNING;
+      best->ctx_switches++;
       c->proc = best;
 
       swtch(&c->context, &best->context);
@@ -911,6 +951,7 @@ procdump(void)
   uint64 total_mem_kb = 0;
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 
   printk("PID   PRIO  CPU (U/K)       MEM-KB  STATE   NAME\n");
   printk("----  ----  --------------  ------  ------  ----------------\n");
@@ -921,12 +962,17 @@ procdump(void)
   printk("----  ----  ----  --------------  ------  ------  ----------------\n");
 >>>>>>> e18456e (Updated xv6-riscv)
 =======
+=======
+>>>>>>> bc531db (Implemented modules 11-15)
   uint64 now = ticks;
 
   printk("PID   PRIO  EFF   CPU (U/K)       MEM-KB  STATE   NAME\n");
   printk(
     "----  ----  ----  --------------  ------  ------  ----------------\n");
+<<<<<<< HEAD
 >>>>>>> b8719fe (updated project)
+=======
+>>>>>>> bc531db (Implemented modules 11-15)
 
   for (p = proc; p < &proc[NPROC]; p++) {
     if (p->state == UNUSED)
@@ -953,12 +999,16 @@ procdump(void)
     uint64 mem_kb = (p->sz + 1023) / 1024;
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
     int eff_prio = calc_eff_prio(p, now, 0);
 >>>>>>> e18456e (Updated xv6-riscv)
 =======
     int eff_prio = calc_eff_prio(p, now, 0);
 >>>>>>> b8719fe (updated project)
+=======
+    int eff_prio = calc_eff_prio(p, now, 0);
+>>>>>>> bc531db (Implemented modules 11-15)
     total_mem_kb += mem_kb;
     active_count++;
 
@@ -966,18 +1016,23 @@ procdump(void)
     print_uint_col(p->priority, 6);
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
     print_uint_col(eff_prio, 6);
 >>>>>>> e18456e (Updated xv6-riscv)
 =======
     print_uint_col(eff_prio, 6);
 >>>>>>> b8719fe (updated project)
+=======
+    print_uint_col(eff_prio, 6);
+>>>>>>> bc531db (Implemented modules 11-15)
     print_col(cpubuf, 16);
     print_uint_col(mem_kb, 8);
     print_col(state, 8);
     printk("%s\n", p->name);
   }
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
   printk("------------------------------------------------------------\n");
@@ -989,12 +1044,17 @@ procdump(void)
          active_count, total_mem_kb, aging_threshold);
 >>>>>>> e18456e (Updated xv6-riscv)
 =======
+=======
+>>>>>>> bc531db (Implemented modules 11-15)
   printk(
     "------------------------------------------------------------------\n");
   printk(
     "Active processes: %d | Total process memory: %lu KB | Aging: %d ticks\n",
     active_count, total_mem_kb, aging_threshold);
+<<<<<<< HEAD
 >>>>>>> b8719fe (updated project)
+=======
+>>>>>>> bc531db (Implemented modules 11-15)
 }
 
 // Update the scheduling priority of process 'pid' (pid == 0 targets caller).
@@ -1146,12 +1206,17 @@ print_ptree_node(const struct pnode *node, int depth)
     st = "???";
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   printk("[%d] %s (prio=%d, state=%s, kids=%d)\n",
          node->pid, node->name, node->priority, st, node->kids);
 =======
   printk("[%d] %s (prio=%d, state=%s, kids=%d)\n", node->pid, node->name,
          node->priority, st, node->kids);
 >>>>>>> b8719fe (updated project)
+=======
+  printk("[%d] %s (prio=%d, state=%s, kids=%d)\n", node->pid, node->name,
+         node->priority, st, node->kids);
+>>>>>>> bc531db (Implemented modules 11-15)
 }
 
 static void
@@ -1235,12 +1300,17 @@ proctree(int root_pid)
   }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   printk("Subtree Root PID: %d (kids=%d)\n",
          nodes[root_idx].pid, nodes[root_idx].kids);
 =======
   printk("Subtree Root PID: %d (kids=%d)\n", nodes[root_idx].pid,
          nodes[root_idx].kids);
 >>>>>>> b8719fe (updated project)
+=======
+  printk("Subtree Root PID: %d (kids=%d)\n", nodes[root_idx].pid,
+         nodes[root_idx].kids);
+>>>>>>> bc531db (Implemented modules 11-15)
   print_ptree_node(&nodes[root_idx], 0);
   print_ptree_nodes(nodes, count, nodes[root_idx].pid, 1);
   kfree((void *)nodes);
@@ -1304,3 +1374,124 @@ getsyscall_snapshot(int pid, int *pid_out, char *name_out, uint64 *total_out,
 
   return -1;
 }
+<<<<<<< HEAD
+=======
+
+// Query or set a process's CPU affinity mask (pid == 0 targets caller).
+// Passing mask == 0 returns the current effective mask; otherwise sets mask
+// (requires at least one online hart bit) and returns the previous mask.
+int
+setaffinity_proc(int pid, uint64 mask)
+{
+  struct proc *p;
+  uint64 valid = online_cpus;
+
+  if (valid == 0)
+    valid = 1ULL;
+  if (pid < 0)
+    return -1;
+  if (mask != 0 && (mask & valid) == 0)
+    return -1;
+
+  if (pid == 0) {
+    p = myproc();
+    acquire(&p->lock);
+    int old = (int)(p->cpu_affinity & valid);
+    if (mask != 0)
+      p->cpu_affinity = mask & valid;
+    release(&p->lock);
+    return old;
+  }
+
+  for (p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
+    if (p->state != UNUSED && p->pid == pid) {
+      int old = (int)(p->cpu_affinity & valid);
+      if (mask != 0)
+        p->cpu_affinity = mask & valid;
+      release(&p->lock);
+      return old;
+    }
+    release(&p->lock);
+  }
+
+  return -1;
+}
+
+// Copy process 'pid' runtime name into user buffer ubuf (pid == 0 = caller).
+// Returns the string length on success, or -1 on error / not found.
+int
+getprocname_proc(int pid, uint64 ubuf, int bufsiz)
+{
+  struct proc *cur = myproc();
+  struct proc *p;
+  char name[16];
+  int found = 0;
+
+  if (pid < 0 || bufsiz <= 0)
+    return -1;
+
+  if (pid == 0) {
+    acquire(&cur->lock);
+    safestrcpy(name, cur->name, sizeof(name));
+    release(&cur->lock);
+    found = 1;
+  } else {
+    for (p = proc; p < &proc[NPROC]; p++) {
+      acquire(&p->lock);
+      if (p->state != UNUSED && p->pid == pid) {
+        safestrcpy(name, p->name, sizeof(name));
+        release(&p->lock);
+        found = 1;
+        break;
+      }
+      release(&p->lock);
+    }
+  }
+
+  if (!found)
+    return -1;
+
+  int len = strlen(name);
+  if (len >= bufsiz)
+    len = bufsiz - 1;
+  name[len] = '\0';
+
+  if (copyout(cur->pagetable, cur->sz, ubuf, name, len + 1) < 0)
+    return -1;
+
+  return len;
+}
+
+// Find all active processes whose name matches 'name' and copy up to 'max'
+// PIDs into user array upids. Returns total matching process count.
+int
+findproc_by_name(const char *name, uint64 upids, int max)
+{
+  struct proc *cur = myproc();
+  struct proc *p;
+  int found[NPROC];
+  int count = 0;
+
+  if (max <= 0 || name[0] == '\0')
+    return -1;
+
+  for (p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
+    if (p->state != UNUSED && strncmp(p->name, name, sizeof(p->name)) == 0) {
+      if (count < NPROC)
+        found[count++] = p->pid;
+    }
+    release(&p->lock);
+  }
+
+  int to_copy = (count < max) ? count : max;
+  if (to_copy > 0 && upids != 0) {
+    if (copyout(cur->pagetable, cur->sz, upids, (char *)found,
+                to_copy * sizeof(int)) < 0)
+      return -1;
+  }
+
+  return count;
+}
+>>>>>>> bc531db (Implemented modules 11-15)

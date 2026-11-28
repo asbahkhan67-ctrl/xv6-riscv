@@ -24,11 +24,16 @@ usage(void)
   printf("Usage:\n");
   printf("  setpriority <pid>             (view current priority; 0 = self)\n");
 <<<<<<< HEAD
+<<<<<<< HEAD
   printf("  setpriority <pid> <1..20>     (set priority: 1=highest, 10=default, 20=lowest)\n");
 =======
   printf(
     "  setpriority <pid> <1..20>     (set priority: 1=highest, 10=default, 20=lowest)\n");
 >>>>>>> b8719fe (updated project)
+=======
+  printf(
+    "  setpriority <pid> <1..20>     (set priority: 1=highest, 10=default, 20=lowest)\n");
+>>>>>>> bc531db (Implemented modules 11-15)
 }
 
 int
@@ -83,18 +88,24 @@ main(int argc, char *argv[])
 
   if (pid == 0)
 <<<<<<< HEAD
+<<<<<<< HEAD
     printf("Process %d (self) priority changed: %d -> %d\n",
            target_pid, old_prio, new_prio);
   else
     printf("Process %d priority changed: %d -> %d\n",
            target_pid, old_prio, new_prio);
 =======
+=======
+>>>>>>> bc531db (Implemented modules 11-15)
     printf("Process %d (self) priority changed: %d -> %d\n", target_pid,
            old_prio, new_prio);
   else
     printf("Process %d priority changed: %d -> %d\n", target_pid, old_prio,
            new_prio);
+<<<<<<< HEAD
 >>>>>>> b8719fe (updated project)
+=======
+>>>>>>> bc531db (Implemented modules 11-15)
 
   exit(0);
 }

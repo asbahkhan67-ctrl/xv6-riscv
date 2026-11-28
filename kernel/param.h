@@ -14,6 +14,7 @@
 #define USERSTACK       1                 // user stack pages
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 #define AGING_THRESHOLD 10                // ticks before priority aging boost
 #define PRIO_MIN        1                 // highest scheduling priority
 #define PRIO_DEFAULT    10                // default process priority
@@ -42,6 +43,14 @@
 #define PRIO_MAX        20 // lowest scheduling priority
 #define MAX_SYSCALLS    48 // max syscall slots tracked for per-call stats
 
+=======
+#define AGING_THRESHOLD 10 // default ticks before priority aging boost
+#define PRIO_MIN        1  // highest scheduling priority
+#define PRIO_DEFAULT    10 // default process priority
+#define PRIO_MAX        20 // lowest scheduling priority
+#define MAX_SYSCALLS    48 // max syscall slots tracked for per-call stats
+
+>>>>>>> bc531db (Implemented modules 11-15)
 #define TRACE_ERRORS  0x1 // strace -e: log only failing syscalls (ret < 0)
 #define TRACE_SUMMARY 0x2 // strace -c: print call & error summary on exit
 
@@ -51,4 +60,7 @@
 #define MAP_SHARED    0x1
 #define MAP_PRIVATE   0x2
 #define MAP_ANONYMOUS 0x4 // zero-filled mapping without a file
+<<<<<<< HEAD
 >>>>>>> b8719fe (updated project)
+=======
+>>>>>>> bc531db (Implemented modules 11-15)

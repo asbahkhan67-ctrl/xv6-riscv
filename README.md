@@ -32,6 +32,7 @@ The implementation targets **64-bit RISC-V (`rv64gc`)** and runs on **QEMU (`vir
 | **5** | **Memory mapping (`mmap` & `munmap`)** | Anonymous zero-filled memory (`MAP_ANONYMOUS`) without needing a file |
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 | **6** | **System call tracing with `trace()` and `strace`** | Error-only filtering (`strace -e`) & post-run syscall summary table (`strace -c`) |
 | **7** | **System resource diagnostics (`sysinfo` & `free`)** | Human-readable MB / `%` mode (`free -m`) + open file & shared COW page counts |
 | **8** | **Parent process inspection (`getppid` & `pstree`)** | Targeted subtree root filtering (`pstree [pid]`) & per-node child count badge |
@@ -40,11 +41,14 @@ The implementation targets **64-bit RISC-V (`rv64gc`)** and runs on **QEMU (`vir
 =======
 =======
 >>>>>>> b8719fe (updated project)
+=======
+>>>>>>> bc531db (Implemented modules 11-15)
 | **6** | **System call tracing (`strace`)** | Show only failed calls (`-e`) or print a summary table (`-c`) |
 | **7** | **System health & memory (`free`)** | Megabyte view (`free -m`) plus open files & shared COW page counts |
 | **8** | **Process family tree (`pstree`)** | Filter by a chosen root PID (`pstree <pid>`) and show child counts (`kids=N`) |
 | **9** | **Anti-starvation priority aging (`agetest`)** | Live effective priority (`EFF`) in `ps` and runtime tuning (`agetest set`) |
 | **10** | **Syscall counter (`syscount`)** | Ranked breakdown of top syscalls and errors (`syscount -v [pid]`) |
+<<<<<<< HEAD
 <<<<<<< HEAD
 >>>>>>> e18456e (Updated xv6-riscv)
 =======
@@ -54,6 +58,13 @@ The implementation targets **64-bit RISC-V (`rv64gc`)** and runs on **QEMU (`vir
 | **13** | **Voluntary CPU yielding (`sched_yield`)** | Per-process voluntary yield counter (`yield_count`) for cooperative profiling |
 | **14** | **Multi-core HART identification (`getcpuid`)** | Soft CPU core affinity mask (`setaffinity`) to pin processes to specific harts |
 | **15** | **Dynamic process naming (`setprocname`)** | Runtime name retrieval (`getprocname`) & process lookup by name (`pidof`) |
+=======
+| **11** | **Command timer & benchmark (`time`)** | Shows CPU usage percentage (`CPU%`) and context switches |
+| **12** | **Clean power control (`shutdown` & `reboot`)** | Optional countdown timer (`shutdown <sec>`) with console warning |
+| **13** | **Voluntary CPU yielding (`sched_yield`)** | Tracks how many times each process gave up the CPU (`yield_count`) |
+| **14** | **Multi-core CPU info (`cpuinfo`)** | Pin processes to specific RISC-V cores (`setaffinity`) |
+| **15** | **Dynamic process naming (`setprocname`)** | Read back a process name (`getprocname`) and find PIDs (`pidof`) |
+>>>>>>> bc531db (Implemented modules 11-15)
 | **16** | **Random-access file positioning (`lseek`)** | Sparse seek past EOF with automatic zero-fill upon subsequent `write()` |
 | **17** | **Symbolic links (`symlink` & `O_NOFOLLOW`)** | Target inspection (`readlink`) & arrow target rendering (`link -> target`) in `ls` |
 | **18** | **Periodic user-space timer alarms (`sigalarm`)** | One-shot alarm flag (`SIGALARM_ONESHOT`) & remaining-ticks return value |
@@ -214,6 +225,7 @@ flowchart TD
 $ ps
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 PID   PRIO  CPU (U/K)       MEM-KB  STATE   NAME
 ----  ----  --------------  ------  ------  ----------------
 1     10    0 (0/0)         16      sleep   init
@@ -224,6 +236,8 @@ Active processes: 3 | Total process memory: 52 KB
 =======
 =======
 >>>>>>> b8719fe (updated project)
+=======
+>>>>>>> bc531db (Implemented modules 11-15)
 PID   PRIO  EFF   CPU (U/K)       MEM-KB  STATE   NAME
 ----  ----  ----  --------------  ------  ------  ----------------
 1     10    10    0 (0/0)         16      sleep   init
@@ -232,9 +246,12 @@ PID   PRIO  EFF   CPU (U/K)       MEM-KB  STATE   NAME
 ------------------------------------------------------------------
 Active processes: 3 | Total process memory: 52 KB | Aging: 10 ticks
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> e18456e (Updated xv6-riscv)
 =======
 >>>>>>> b8719fe (updated project)
+=======
+>>>>>>> bc531db (Implemented modules 11-15)
 ```
 
 ### Key Files
@@ -337,6 +354,7 @@ $ cpuburn &
 $ ps
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 PID   PRIO  CPU (U/K)       MEM-KB  STATE   NAME
 ----  ----  --------------  ------  ------  ----------------
 1     10    0 (0/0)         16      sleep   init
@@ -348,6 +366,8 @@ Active processes: 4 | Total process memory: 68 KB
 =======
 =======
 >>>>>>> b8719fe (updated project)
+=======
+>>>>>>> bc531db (Implemented modules 11-15)
 PID   PRIO  EFF   CPU (U/K)       MEM-KB  STATE   NAME
 ----  ----  ----  --------------  ------  ------  ----------------
 1     10    10    0 (0/0)         16      sleep   init
@@ -357,9 +377,12 @@ PID   PRIO  EFF   CPU (U/K)       MEM-KB  STATE   NAME
 ------------------------------------------------------------------
 Active processes: 4 | Total process memory: 68 KB | Aging: 10 ticks
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> e18456e (Updated xv6-riscv)
 =======
 >>>>>>> b8719fe (updated project)
+=======
+>>>>>>> bc531db (Implemented modules 11-15)
 ```
 
 ### Key Files
@@ -756,95 +779,91 @@ close             1       0
 
 ---
 
-# 11. Process Execution Benchmarking — `waitx()` and `time`
+# 11. Command Benchmarking — `waitx()` and `time`
 
-Each process records its creation tick (`p->ctime = ticks`) in `allocproc()`. The `waitx(&status, &wtime, &rtime)` system call (`SYS_waitx = 32`) reaps an exited child and reports both **CPU execution ticks (`rtime`)** and **waiting/sleeping ticks (`wtime`)**.
+### In Simple Words
+
+`time` acts like a **stopwatch** for any command you run. It starts the program, waits for it to finish, and prints how long it ran in total, how many ticks it actually spent using the CPU vs. waiting, how many times the scheduler switched it onto a CPU, and its exit code.
 
 ```mermaid
-sequenceDiagram
-    participant Time as "time Command (Parent)"
-    participant Kern as "NexusXv6 Kernel"
-    participant Child as "Target Command (Child)"
-
-    Time->>Kern: 1. fork() creates child (records ctime = ticks, ctx_switches = 0)
-    Time->>Kern: 2. Call waitx() and sleep until child exits
-    Child->>Kern: 3. exec(command) & run workload
-    Note over Kern,Child: Timer ticks increment cpu_time++ and swtch() increments ctx_switches++
-    Child->>Kern: 4. exit(status) transitions process to ZOMBIE
-    Kern->>Kern: 5. Compute rtime, wtime, CPU% = (rtime * 100) / elapsed, and ctx_switches
-    Kern-->>Time: 6. Reap child & print benchmark + Mini-Extension CPU% & context switches
+flowchart TD
+    A["1. User runs 'time command'"] --> B["2. Start child process (save creation tick & 0 context switches)"]
+    B --> C["3. Parent sleeps in waitx() until child finishes"]
+    C --> D["4. Child runs (CPU ticks and context switches are counted automatically)"]
+    D --> E["5. Child calls exit() -> kernel computes run time & wait time"]
+    E --> F["6. Print Elapsed ticks, CPU%, Wait ticks, Context switches & Exit status"]
 ```
 
-### Example
+### How It Works
+
+* **Creation timestamp (`kernel/proc.c`):** `allocproc()` records `p->ctime = ticks` and clears `p->ctx_switches = 0`.
+* **Context-switch tracking (`scheduler()`):** Every time `scheduler()` picks a process and runs `swtch()`, `best->ctx_switches++` increases by 1.
+* **Report on exit (`kwaitx()`, `user/time.c`):** Returns wait ticks (`total - cpu_time`), active CPU ticks, and context switches so `time` can compute `CPU%`.
+
+### Mini-Extension: CPU Percentage (`CPU%`) & Context Switches
+
+* Shows **`CPU%` (`(CPU ticks * 100) / Elapsed ticks`)** so you can immediately tell if a command is CPU-heavy or mostly waiting, alongside the exact **context switch count**.
+
+### Live Demo & Output
 
 ```text
-$ time cowtest
-Original: A
-After child 1: A
-After child 2: A
---- Benchmark: cowtest (PID 6) ---
-Elapsed ticks:    4
-CPU ticks:        3 (75% CPU)
-Wait ticks:       1
-Context switches: 5
+$ time cpuburn 2
+[cpuburn] PID 4 running 2 busy rounds...
+[cpuburn] PID 4 finished 2 rounds
+
+--- Benchmark: cpuburn (PID 4) ---
+Elapsed ticks:    3
+CPU ticks:        3 (100% CPU)
+Wait ticks:       0
+Context switches: 8
 Exit status:      0
 ```
 
-### Mini-Extension: CPU Utilization Percentage (`CPU%`) & Context-Switch Count
-
-* Increments `p->ctx_switches` whenever `scheduler()` dispatches the process and computes **CPU utilization percentage** (`(rtime * 100) / elapsed_ticks`) in `time`, revealing whether a workload is CPU-bound or I/O-bound.
-
-### Relevant Files
+### Key Files
 
 * `kernel/proc.h`, `kernel/proc.c`, `kernel/sysproc.c`, `user/time.c`
 
 ---
 
-# 12. Clean System Power Management — `halt()` and `reboot()`
+# 12. Clean Power Management — `shutdown` and `reboot`
 
-NexusXv6 maps QEMU's SiFive test/power finisher device (`VIRT_TEST = 0x100000L`) into the kernel page table during `kvmmake()`. The `shutdown` and `reboot` commands flush disk buffers first via `sync()`, then signal QEMU cleanly via MMIO.
+### In Simple Words
+
+Instead of forcing QEMU to quit with keyboard shortcuts (`Ctrl+A`, `X`), our `shutdown` and `reboot` commands **flush all pending disk writes safely first** via `sync()`, then send a clean power-off or restart signal directly to the virtual machine hardware.
 
 ```mermaid
 flowchart TD
-    subgraph User["User Space (shutdown / reboot)"]
-        U1["1. User runs 'shutdown [seconds]' or 'reboot [seconds]'"]
-        UM["Mini-Extension: Broadcast console warning & run cancellable countdown timer"]
-        U2["2. Call sync() to flush file-system journal to disk"]
-        U1 --> UM --> U2
-    end
-
-    subgraph Kernel["Kernel Space (sysproc.c)"]
-        K1{"3. Which system call?"}
-        K2["sys_halt() (SYS_halt = 33): Write magic 0x5555 to VIRT_TEST"]
-        K3["sys_reboot() (SYS_reboot = 34): Write magic 0x7777 to VIRT_TEST"]
-        K1 -- "halt()" --> K2
-        K1 -- "reboot()" --> K3
-    end
-
-    subgraph QEMU["QEMU virt Hardware (0x100000)"]
-        Q1["QEMU exits cleanly to host terminal"]
-        Q2["QEMU resets board & reboots NexusXv6"]
-    end
-
-    U2 --> K1
-    K2 --> Q1
-    K3 --> Q2
+    A["1. User runs 'shutdown [sec]' or 'reboot [sec]'"] --> B{"2. Was a delay given?"}
+    B -- "Yes (e.g. shutdown 3)" --> C["Print countdown warning each second"]
+    B -- "No" --> D["Skip countdown"]
+    C --> E["3. Flush disk writes safely with sync()"]
+    D --> E
+    E --> F{"4. Power off or restart?"}
+    F -- "halt()" --> G["Send power-off signal (0x5555) -> QEMU exits cleanly"]
+    F -- "reboot()" --> H["Send reset signal (0x7777) -> QEMU restarts"]
 ```
 
-### Example
+### How It Works
+
+* **Hardware power register mapped (`kernel/vm.c`):** `kvmmake()` maps QEMU's power control address (`VIRT_TEST = 0x100000`) so the kernel can talk to the virtual board directly.
+* **Disk safety first (`user/shutdown.c`, `user/reboot.c`):** Always calls `sync()` to flush the file system log before halting or rebooting.
+
+### Mini-Extension: Timed Countdown Warning (`shutdown <sec>` / `reboot <sec>`)
+
+* Supports an optional delay in seconds (for example, `shutdown 1` or `reboot 3`) that broadcasts a countdown warning on the console before flushing disks and powering off.
+
+### Live Demo & Output
 
 ```text
-$ shutdown 3
-Broadcast: NexusXv6 shutting down in 3 seconds... (3... 2... 1...)
+$ shutdown 1
+Broadcast: NexusXv6 shutting down in 1 second(s)...
+  shutting down in 1...
 Flushing filesystems...
+Shutting down NexusXv6...
 System halting...
 ```
 
-### Mini-Extension: Timed Countdown & Broadcast Warning (`shutdown <sec>`)
-
-* Supports an optional delay argument (`shutdown 5` or `reboot 3`) that broadcasts a console countdown warning, gives background jobs time to finish (or allows aborting before zero), flushes the disk log, and triggers clean MMIO power control.
-
-### Relevant Files
+### Key Files
 
 * `kernel/memlayout.h`, `kernel/vm.c`, `kernel/sysproc.c`, `user/shutdown.c`, `user/reboot.c`
 
@@ -852,107 +871,149 @@ System halting...
 
 # 13. Voluntary CPU Yielding — `sched_yield()`
 
-The `sched_yield()` system call (`SYS_sched_yield = 35`) exposes cooperative scheduling to user space, allowing threads/workers to give up the remainder of their CPU time slice immediately without waiting for a hardware timer interrupt.
+### In Simple Words
+
+Normally a running process keeps the CPU until a hardware timer interrupts it or it waits for I/O. `sched_yield()` lets a cooperative program **politely hand the CPU over to someone else right away** when it reaches a good stopping point.
 
 ```mermaid
-stateDiagram-v2
-    [*] --> RUNNABLE : fork() / userinit()
-    RUNNABLE --> RUNNING : Selected by scheduler()
-    RUNNING --> RUNNABLE : sched_yield() voluntary handoff (Mini-Extension increments yield_count++)
-    RUNNING --> SLEEPING : Blocking I/O or wait()
-    SLEEPING --> RUNNABLE : wakeup()
-    RUNNING --> ZOMBIE : exit()
-    ZOMBIE --> [*] : Reaped by parent
+flowchart TD
+    A["1. Process is RUNNING on a CPU core"] --> B["2. Process calls sched_yield()"]
+    B --> C["3. Bonus: Add +1 to process yield_count"]
+    C --> D["4. Mark process RUNNABLE and switch to scheduler"]
+    D --> E["5. Scheduler lets another ready process run"]
+    E --> F["6. Original process resumes later and receives its yield count"]
 ```
 
-### Example
+### How It Works
+
+* **Instant polite handoff (`kernel/sysproc.c`):** `sys_sched_yield()` increments `p->yield_count`, calls `yield()`, and returns the updated voluntary yield count to user space.
+* **Verified alternating turns (`user/yieldtest.c`):** Two workers (`Worker A` and `Worker B`) take turns calling `sched_yield()` three times each and confirm `6` total voluntary yields.
+
+### Mini-Extension: Voluntary Yield Counter (`yield_count`)
+
+* Tracks `p->yield_count` inside `struct proc` and returns it from `sched_yield()` so programs can count voluntary handoffs separately from timer preemptions.
+
+### Live Demo & Output
 
 ```text
 $ yieldtest
 yieldtest: starting cooperative CPU yield test
-Worker A (PID 4): step 1 -> sched_yield() (voluntary yields = 1)
-Worker B (PID 5): step 1 -> sched_yield() (voluntary yields = 1)
-...
+Worker A (PID 6): step 1 -> sched_yield() (voluntary yields = 1)
+Worker B (PID 7): step 1 -> sched_yield() (voluntary yields = 1)
+Worker A (PID 6): step 2 -> sched_yield() (voluntary yields = 2)
+Worker B (PID 7): step 2 -> sched_yield() (voluntary yields = 2)
+Worker A (PID 6): step 3 -> sched_yield() (voluntary yields = 3)
+Worker B (PID 7): step 3 -> sched_yield() (voluntary yields = 3)
 yieldtest: ALL TESTS PASSED (6 total voluntary yields verified)
 ```
 
-### Mini-Extension: Per-Process Voluntary Yield Counter (`yield_count`)
+### Key Files
 
-* Tracks `p->yield_count` in `struct proc` (incremented on each `sys_sched_yield()` call and returned to the caller), enabling cooperative benchmarks to verify exact voluntary handoffs versus timer-driven involuntary preemptions.
-
-### Relevant Files
-
-* `kernel/sysproc.c`, `kernel/proc.c`, `user/yieldtest.c`
+* `kernel/proc.h`, `kernel/proc.c`, `kernel/sysproc.c`, `user/yieldtest.c`
 
 ---
 
-# 14. Multi-Core HART Identification — `getcpuid()`
+# 14. Multi-Core CPU Identification & Affinity — `getcpuid()` and `cpuinfo`
 
-QEMU boots NexusXv6 as a symmetric multiprocessor (`CPUS = 3`: `hart 0`, `hart 1`, `hart 2`). The `getcpuid()` system call (`SYS_getcpuid = 36`) safely returns which physical RISC-V hardware thread is currently executing the calling process.
+### In Simple Words
+
+QEMU runs NexusXv6 on **3 RISC-V CPU cores (harts `0`, `1`, and `2`)** at the same time. `getcpuid()` tells a program **which exact CPU core it is currently running on**, and `setaffinity()` lets a program **pin itself to specific cores** (just like assigning a worker to a specific desk).
 
 ```mermaid
 flowchart TD
-    AFF["Mini-Extension: setaffinity(pid, hart_mask) pins allowed RISC-V cores"] -. "Checked in scheduler()" .-> U
-    U["1. Process runs on an allowed Hart & calls getcpuid()"] --> K1["2. Kernel enters sys_getcpuid()"]
-    K1 --> K2["3. push_off(): Disable local interrupts to prevent core migration"]
-    K2 --> K3["4. cpuid(): Read RISC-V 'tp' register (physical Hart ID: 0, 1, or 2)"]
-    K3 --> K4["5. pop_off(): Restore interrupt state"]
-    K4 --> U2["6. Return executing Hart ID (confirms SMP dispatch & core pinning)"]
+    A["1. Process optionally pins allowed cores via setaffinity(pid, mask)"] --> B["2. Scheduler checks mask before picking process for a core"]
+    B --> C["3. Process runs on an allowed RISC-V core and calls getcpuid()"]
+    C --> D["4. Disable interrupts briefly so process cannot switch cores mid-read"]
+    D --> E["5. Read current core ID (0, 1, or 2) and restore interrupts"]
+    E --> F["6. Return core ID to user program"]
 ```
 
-### Example
+### How It Works
+
+* **Interrupt-safe read (`kernel/sysproc.c`):** `sys_getcpuid()` wraps `cpuid()` in `push_off()` / `pop_off()` so the process cannot migrate to another core while reading its hart ID.
+* **Online core validation (`kernel/proc.c`):** `scheduler()` records all booted cores in `online_cpus`, so `setaffinity()` safely rejects invalid core masks (like `0x8000`).
+
+### Mini-Extension: CPU Core Affinity Pinning (`setaffinity`)
+
+* Stores a per-process `p->cpu_affinity` bitmask checked by `scheduler()`. Calling `setaffinity(pid, mask)` pins a process to chosen harts (`0x1` = hart 0, `0x2` = hart 1, `0x4` = hart 2) and immediately migrates it if needed.
+
+### Live Demo & Output
 
 ```text
 $ cpuinfo
-Parent (PID 4) running on RISC-V hart 0
-Pinned Worker (mask=0x4 -> hart 2 only) executing on RISC-V hart 2
+Parent (PID 8) running on RISC-V hart 1 (online mask=0x7)
+Worker 0 (PID 9, mask=0x1) executing on RISC-V hart 0
+Worker 1 (PID 10, mask=0x2) executing on RISC-V hart 1
+Worker 2 (PID 11, mask=0x4) executing on RISC-V hart 2
+cpuinfo: ALL TESTS PASSED
 ```
 
-### Mini-Extension: Soft CPU Core Affinity Mask (`setaffinity`)
+### Key Files
 
-* Adds a per-process `p->cpu_affinity` bitmask (default `0x7` for harts `0..2`) checked by `scheduler()` before context-switching, allowing latency-sensitive workers to pin themselves to specific RISC-V cores and verify placement with `getcpuid()`.
-
-### Relevant Files
-
-* `kernel/sysproc.c`, `kernel/proc.c`, `user/cpuinfo.c`
+* `kernel/proc.h`, `kernel/proc.c`, `kernel/syscall.h`, `kernel/syscall.c`, `kernel/sysproc.c`, `user/cpuinfo.c`
 
 ---
 
-# 15. Dynamic Process Naming — `setprocname()`
+# 15. Dynamic Process Naming — `setprocname()` and `pidof`
 
-The `setprocname(const char *name)` system call (`SYS_setprocname = 37`) allows worker processes and background services to assign themselves meaningful runtime names (up to 15 characters + NUL) visible in `ps` and `pstree`.
+### In Simple Words
+
+When a parent process forks worker children, every child initially inherits the parent's name. `setprocname()` lets a running process **give itself a clear custom name** (like `"nexus_worker"`), which immediately updates in `ps` and `pstree` and can be searched by name with `pidof`.
 
 ```mermaid
 flowchart TD
-    subgraph Write["Set Dynamic Process Name"]
-        U["1. Process calls setprocname('nexus_worker')"] --> K1["2. Validate non-empty string via argstr()"]
-        K1 --> K2["3. Lock p->lock & copy into p->name[16]"]
+    subgraph Rename["Give a Process a Custom Name"]
+        A["1. Process calls setprocname('nexus_worker')"] --> B["2. Kernel checks string is valid & non-empty"]
+        B --> C["3. Lock process and update p->name (up to 15 chars)"]
     end
 
-    subgraph Read["Mini-Extension: Query Name & Lookup by Name"]
-        R1["getprocname(pid, buf) copies p->name[16] back to user space"]
-        R2["'pidof nexus_worker' scans active processes & prints matching PIDs"]
+    subgraph Lookup["Bonus: Read Name & Search by Name"]
+        D["getprocname(pid, buf) reads the current name back"]
+        E["'pidof sh' scans active processes and prints matching PIDs"]
     end
 
-    K2 --> R1 --> R2
+    C --> D --> E
 ```
 
-### Example
+### How It Works
+
+* **Thread-safe name update (`kernel/sysproc.c`):** `sys_setprocname()` rejects empty strings and copies up to 15 characters + NUL safely under `p->lock`.
+* **Visible everywhere:** `ps` and `pstree` immediately show the new runtime name.
+
+### Mini-Extension: Read Name (`getprocname`) & Search by Name (`pidof`)
+
+* Adds **`getprocname(pid, buf, size)`** to read any process's current name, and adds **`findproc()` + `pidof <name>`** so you can look up active PIDs by name right from the shell.
+
+### Live Demo & Output
 
 ```text
 $ renametest
-renametest (PID 5): renamed to "nexus_worker"
-getprocname(5) -> "nexus_worker"
+renametest (PID 12): before setprocname()
+PID   PRIO  EFF   CPU (U/K)       MEM-KB  STATE   NAME
+----  ----  ----  --------------  ------  ------  ----------------
+1     10    10    0 (0/0)         16      sleep   init
+2     10    10    0 (0/0)         20      sleep   sh
+12    10    10    0 (0/0)         16      run     renametest
+------------------------------------------------------------------
+Active processes: 3 | Total process memory: 52 KB | Aging: 10 ticks
+
+renametest (PID 12): renamed to "nexus_worker" (verified via getprocname & findproc)
+PID   PRIO  EFF   CPU (U/K)       MEM-KB  STATE   NAME
+----  ----  ----  --------------  ------  ------  ----------------
+1     10    10    0 (0/0)         16      sleep   init
+2     10    10    0 (0/0)         20      sleep   sh
+12    10    10    0 (0/0)         16      run     nexus_worker
+------------------------------------------------------------------
+Active processes: 3 | Total process memory: 52 KB | Aging: 10 ticks
 renametest: ALL TESTS PASSED
+
+$ pidof sh
+PID(s) for 'sh': 2
 ```
 
-### Mini-Extension: Name Retrieval (`getprocname`) & `pidof` Utility
+### Key Files
 
-* Adds `getprocname(int pid, char *buf)` to read back any active process's runtime name into user space and powers a `pidof <name>` command to locate daemon/worker PIDs by name.
-
-### Relevant Files
-
-* `kernel/sysproc.c`, `kernel/proc.h`, `user/renametest.c`
+* `kernel/proc.c`, `kernel/syscall.h`, `kernel/syscall.c`, `kernel/sysproc.c`, `user/renametest.c`, `user/pidof.c`
 
 ---
 
